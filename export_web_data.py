@@ -122,6 +122,15 @@ json.dump({"type": "FeatureCollection", "features": mz_feats},
           open(out("moisture_zones.geojson"), "w"))
 print(f"moisture_zones.geojson: {len(mz_feats)} polygons, zones={sorted(mz['zone'].dropna().unique())}")
 
+# ------------------------------------------------------------- 2b. NKSK BOUNDARY
+bnd = gpd.read_file(src("inputs", "NKSK-boundaries", "nksk.shp")).to_crs(4326)
+bnd_geom = bnd.geometry.simplify(0.0003, preserve_topology=True).union_all()
+json.dump({"type": "FeatureCollection",
+           "features": [{"type": "Feature", "properties": {"name": "NKSK"},
+                         "geometry": _round_geom(bnd_geom)}]},
+          open(out("nksk_boundary.geojson"), "w"))
+print("nksk_boundary.geojson: 1 polygon")
+
 # ------------------------------------------------------------------ 3. RASTERS
 # clip window (lon/lat) = padded segment bbox
 CLIP = (minx - 0.03, miny - 0.03, maxx + 0.03, maxy + 0.03)  # (W,S,E,N)

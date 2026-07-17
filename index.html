@@ -251,7 +251,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 <script>
 // Static map context (small, not a notebook product). Real data loads in boot().
 const DB={"nksk":[[20.3,-155.34],[20.28,-155.9],[19.6,-156.12],[19.58,-155.34],[20.3,-155.34]],"towns":[["Kawaihae",20.033,-155.829],["Waimea",20.02,-155.668],["Waikoloa Village",19.938,-155.789],["Kailua-Kona",19.639,-155.997],["Hawi",20.241,-155.833]]};
-let SEG=[], GRIDS_META={}, MOISTURE=null;
+let SEG=[], GRIDS_META={}, MOISTURE=null, NKSK_BND=null;
 const INFL=1.332,DISC=0.02,CREW_RATE=45,TRUCK_GAL=6000;
 const PV1=[1,2,3].reduce((s,t)=>s+1/Math.pow(1+DISC,t),0);
 const WATER_C=0.0076,TRUCK_C=250/6000,CWD_MIN=651,CWD_MAX=5608;
@@ -301,7 +301,8 @@ const METRICS={
 function kf(v){v=Math.round(v);if(v>=1e6)return(v/1e6).toFixed(v>=1e7?0:1)+'M';if(v>=1e3)return(v/1e3).toFixed(v>=1e4?0:1)+'k';return''+v}
 function money(v){return'$'+Math.round(v).toLocaleString('en-US')}
 function titleCase(r){return r.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ')}
-const map=L.map('map',{zoomControl:true,attributionControl:true}).setView([19.95,-155.73],10);
+const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([19.95,-155.73],10);
+L.control.zoom({position:'topright'}).addTo(map);
 const ATTRIB='Tiles &copy; Esri | Data: NKSK Green Fuel Break pipeline';
 const BASE={
  relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
@@ -316,7 +317,12 @@ function setBase(){
   baseLayer.addTo(map);baseLayer.bringToBack();
   if(state.basemap==='relief'||state.basemap==='sat'){refLabels.addTo(map);}else{map.removeLayer(refLabels);}
 }
-L.polygon(DB.nksk,{color:'#2f5d4f',weight:1.5,dashArray:'5 5',fill:false}).addTo(map);
+let nkskLayer=null;
+function drawBoundary(){
+  if(nkskLayer)map.removeLayer(nkskLayer);
+  if(!NKSK_BND)return;
+  nkskLayer=L.geoJSON(NKSK_BND,{style:{color:'#2f5d4f',weight:1.8,dashArray:'5 5',fill:false},interactive:false}).addTo(map);
+}
 DB.towns.forEach(c=>L.marker([c[1],c[2]],{icon:L.divIcon({className:'',html:'<div class="townmark">'+c[0]+'</div>',iconSize:[1,1]})}).addTo(map));
 let ovLayer=null,mzLayer=null;
 const MZ_ORDER=['Arid','Very Dry','Moderately Dry','Seasonal Mesic','Moist Mesic','Moderately Wet','Very Wet'];
@@ -506,12 +512,13 @@ async function boot(){
       line:c.map(x=>[x[1],x[0]])};});
     for(const k of ['cwd','elev','pet','aet']){try{GRIDS_META[k]=await (await fetch('data/grids/'+k+'.json')).json();}catch(e){}}
     try{MOISTURE=await (await fetch('data/moisture_zones.geojson')).json();}catch(e){}
+    try{NKSK_BND=await (await fetch('data/nksk_boundary.geojson')).json();}catch(e){}
   }catch(err){
     document.getElementById('map').innerHTML='<div style="padding:24px;font-family:sans-serif;color:#a6402e">Could not load data/. Serve this folder over http (e.g. <code>python -m http.server</code>) rather than opening the file directly.</div>';
     console.error(err);return;
   }
   buildMzLegend();
-  loadHash();buildCorr();setBase();drawOverlay();drawSegments();renderAll();
+  loadHash();buildCorr();setBase();drawBoundary();drawOverlay();drawSegments();renderAll();
   $('delivv').textContent='$'+deliv().toFixed(3)+'/gal';
 }
 boot();
