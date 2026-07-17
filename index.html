@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NKSK Green Fuel Break — Planning Tool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1d1f1c;--ink2:#4a4d46;--muted:#8a897f;--line:#e3e2da;--line2:#d3d2c8;
+  --bg:#f6f6f2;--card:#fff;--accent:#2f5d4f;--accent2:#4a7c6c;--accent-soft:#e7efeb;
+  --tan:#bfb9a6;--warn:#a6402e;
+}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{font-family:"Barlow",system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:14px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3,.cond{font-family:"Barlow Condensed",sans-serif}
+header{background:var(--ink);color:#f1f0e9;padding:11px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header h1{font-weight:700;font-size:21px;letter-spacing:.03em;margin:0;text-transform:uppercase}
+header .sub{color:#a9a89d;font-size:12.5px;max-width:560px;line-height:1.35}
+.tag{font-family:"Barlow Condensed";font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;border:1px solid #6b6f62;color:#c9c8bd;padding:2px 8px;border-radius:2px;margin-left:auto}
+.shell{display:grid;grid-template-columns:300px 1fr 336px;height:calc(100vh - 47px)}
+.rail,.side{overflow-y:auto;background:var(--bg)}
+.rail{border-right:1px solid var(--line2)}.side{border-left:1px solid var(--line2)}
+.mapwrap{position:relative;background:#dfe1da}
+#map{position:absolute;inset:0;background:#dfe1da}
+.blk{padding:13px 15px;border-bottom:1px solid var(--line)}
+.blk h2{font-weight:600;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 9px;display:flex;justify-content:space-between;align-items:center}
+.blk h2 .rd{font-family:"IBM Plex Mono";font-weight:500;font-size:11px;color:var(--accent);letter-spacing:0}
+.seg{display:flex;gap:5px}
+.seg button{flex:1;font-family:"Barlow Condensed";font-weight:600;font-size:13px;padding:7px 3px;border:1px solid var(--line2);background:var(--card);color:var(--ink2);cursor:pointer;border-radius:3px;line-height:1.05;transition:.12s}
+.seg button small{display:block;font-family:"Barlow";font-weight:500;font-size:9.5px;color:var(--muted);text-transform:none}
+.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.seg button.on small{color:#cfe0d9}
+select,input[type=number]{width:100%;font-family:"Barlow";font-size:13px;padding:7px 8px;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:3px}
+select{cursor:pointer}
+label.fld{display:block;font-size:11px;color:var(--ink2);margin:9px 0 3px}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:pointer}
+.rl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:1px}
+.val{font-family:"IBM Plex Mono";font-weight:600;color:var(--accent)}
+.hint{font-size:11px;color:var(--muted);line-height:1.4;margin-top:7px}
+.hint.flag{color:var(--warn)}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
+.corr{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer}
+.corr input{accent-color:var(--accent);width:14px;height:14px}
+.corr .sw{width:10px;height:10px;border-radius:2px;flex:0 0 auto}
+.corr .nm{flex:1;font-family:"Barlow Condensed";font-weight:600}
+.corr .ct{font-family:"IBM Plex Mono";font-size:10.5px;color:var(--muted)}
+.mini{display:flex;gap:6px;margin-top:8px}
+.mini button{flex:1;font-size:10.5px;font-family:"Barlow Condensed";font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:5px;border:1px solid var(--line2);background:var(--card);border-radius:3px;cursor:pointer;color:var(--ink2)}
+.btn{width:100%;font-family:"Barlow Condensed";font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:9px;border:0;border-radius:3px;cursor:pointer}
+.btn.pri{background:var(--accent);color:#fff}.btn.pri:hover{background:#264a3f}
+.btn.gho{background:var(--card);border:1px solid var(--line2);color:var(--ink2)}
+.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-top:4px}
+.chk input{accent-color:var(--accent)}
+.legend{position:absolute;left:11px;bottom:11px;z-index:600;background:rgba(255,255,255,.95);border:1px solid var(--line2);border-radius:4px;padding:8px 10px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.14);max-width:230px}
+.legend .lt{font-family:"Barlow Condensed";font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-size:10px;margin-bottom:5px}
+.ramp{height:9px;border-radius:2px;margin-bottom:3px}
+.ramplab{display:flex;justify-content:space-between;font-family:"IBM Plex Mono";font-size:9.5px;color:var(--ink2)}
+.legcat{display:flex;gap:11px;flex-wrap:wrap}
+.legcat span{display:flex;align-items:center;gap:5px;font-size:11px}
+.legcat i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.legdiv{border-top:1px solid var(--line);margin:6px 0}
+.scope{position:absolute;left:11px;top:11px;z-index:600;background:rgba(29,31,28,.9);border-radius:5px;padding:3px;display:flex;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.22)}
+.scope button{font-family:"Barlow Condensed";font-weight:600;font-size:12px;color:#c9c8bd;background:transparent;border:0;padding:5px 11px;border-radius:3px;cursor:pointer}
+.scope button.on{background:var(--accent2);color:#fff}
+.card{padding:13px 15px;border-bottom:1px solid var(--line);background:var(--card)}
+.card h2{font-weight:700;font-size:13px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 2px}
+.csub{font-size:10.5px;color:var(--muted);margin-bottom:10px}
+.big{font-family:"IBM Plex Mono";font-weight:600;font-size:27px;letter-spacing:-.01em;color:var(--accent);line-height:1}
+.split{display:flex;height:8px;border-radius:2px;overflow:hidden;margin:11px 0 4px;border:1px solid var(--line2)}
+.split .i{background:var(--accent2)}.split .m{background:var(--tan)}
+.splitlab{display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)}
+.splitlab b{font-family:"IBM Plex Mono";font-weight:600}
+.kv{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dotted var(--line)}
+.kv:last-child{border-bottom:0}.kv .k{color:var(--ink2)}.kv .v{font-family:"IBM Plex Mono";font-weight:600}
+.ledger{background:#fbfbf8}
+.line{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);border-left:2px solid var(--accent-soft);padding-left:9px}
+.line .lb{flex:1;font-size:12.5px}.line .lb small{display:block;color:var(--muted);font-size:10px}
+.line .qt{font-family:"IBM Plex Mono";font-weight:600;font-size:13px;text-align:right;white-space:nowrap}
+.spec{font-size:11.5px;padding:3px 0;display:flex;justify-content:space-between;align-items:baseline}
+.spec .sn{font-family:"Barlow Condensed";font-weight:600}.spec .sn em{font-style:normal;color:var(--muted);font-weight:400}
+.spec .sq{font-family:"IBM Plex Mono";font-size:10.5px;color:var(--ink2);text-align:right}
+.dtitle{font-family:"Barlow Condensed";font-weight:700;font-size:16px}
+.dsub{font-size:10.5px;color:var(--muted);margin-bottom:8px}
+.pill{display:inline-block;font-family:"Barlow Condensed";font-weight:600;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:9px;margin-left:5px}
+.pill.low{background:#efece2;color:#7a6f4a}.pill.high{background:var(--accent-soft);color:var(--accent)}.pill.excl{background:#eee;color:#888}
+.addbtn{width:100%;margin-top:9px;font-family:"Barlow Condensed";font-weight:700;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:3px;cursor:pointer}
+.addbtn.rm{border-color:var(--warn);color:var(--warn)}
+.bars{margin-top:9px}
+.bar{display:flex;align-items:center;gap:7px;font-size:11px;margin:2px 0}
+.bar .bn{width:74px;color:var(--ink2);text-align:right;flex:0 0 auto}
+.bar .bt{flex:1;height:10px;background:var(--bg);border-radius:2px;overflow:hidden}
+.bar .bf{height:100%;background:var(--accent2)}
+.bar .bv{width:50px;text-align:right;font-family:"IBM Plex Mono";font-size:10px;flex:0 0 auto}
+.dnull{font-size:12px;color:var(--muted);line-height:1.5}
+.leaflet-tooltip.tip{background:var(--ink);color:#f1f0e9;border:0;border-radius:3px;font-family:"IBM Plex Mono";font-size:10.5px;padding:4px 7px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.leaflet-tooltip.tip::before{display:none}
+.townmark{color:var(--ink);font-family:"Barlow Condensed";font-weight:700;font-size:11px;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+@media(max-width:980px){.shell{grid-template-columns:1fr;height:auto}.mapwrap{height:62vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>NKSK Green Fuel Break</h1>
+  <span class="sub">Plan native dryland fuel breaks along North Kona–South Kohala road corridors — species, water, labor, and cost to build and hold them for three years.</span>
+  <span class="tag">Prototype</span>
+</header>
+<div class="shell">
+  <div class="rail">
+    <div class="blk">
+      <h2>Planting palette</h2>
+      <div class="seg" id="choice">
+        <button data-c="1" class="on">1st<small>top-ranked</small></button>
+        <button data-c="2">2nd<small>alternate</small></button>
+        <button data-c="3">3rd<small>fallback</small></button>
+      </div>
+    </div>
+    <div class="blk">
+      <h2>Basemap &amp; layers</h2>
+      <label class="fld">Basemap</label>
+      <select id="basemap">
+        <option value="relief" selected>Shaded relief</option>
+        <option value="topo">Topographic</option>
+        <option value="sat">Satellite</option>
+        <option value="plain">Plain</option>
+      </select>
+      <label class="fld">Data overlay (raster)</label>
+      <select id="overlay">
+        <option value="none" selected>None</option>
+        <option value="cwd">Climatic water deficit</option>
+        <option value="elev">Elevation</option>
+        <option value="pet">Potential ET (Penman)</option>
+        <option value="aet">Actual ET</option>
+        <option value="moisture">Moisture zones</option>
+      </select>
+      <div id="ovbox" style="display:none">
+        <label class="fld">Overlay opacity <span class="val" id="opv">55%</span></label>
+        <input type="range" id="opacity" min="0" max="100" step="5" value="55">
+        <div class="rl"><span id="ovmin"></span><span id="ovmax"></span></div>
+      </div>
+    </div>
+    <div class="blk">
+      <h2>Color roads by</h2>
+      <select id="metric">
+        <option value="tot">Total 3-yr cost ($/segment)</option>
+        <option value="perha">Cost intensity ($/ha)</option>
+        <option value="cwd">Aridity (CWD)</option>
+        <option value="water">Water demand (gal)</option>
+        <option value="plants">Plants required</option>
+        <option value="elev">Elevation class</option>
+      </select>
+    </div>
+    <div class="blk">
+      <h2>Drought scenario</h2>
+      <div class="seg" id="drought">
+        <button data-d="exp" class="on">Expected<small>P .28 / .10</small></button>
+        <button data-d="dry">Dry decade<small>P .45 / .20</small></button>
+        <button data-d="worst">Worst<small>P .65 / .35</small></button>
+      </div>
+      <div class="hint">Scales the chance Year-2 / Year-3 contingency irrigation is triggered.</div>
+    </div>
+    <div class="blk">
+      <h2>Water delivery <span class="rd" id="delivv">$0.299/gal</span></h2>
+      <label class="fld">Crew throughput <span class="val" id="throughv">180</span> gal/hr</label>
+      <input type="range" id="through" min="120" max="260" step="5" value="180">
+      <div class="hint flag">Field labor drives ~80% of delivered water cost — the model's most sensitive input. Validate throughput against WDFI records.</div>
+    </div>
+    <div class="blk">
+      <h2>Fence coverage <span class="rd" id="fencev">50%</span></h2>
+      <input type="range" id="fence" min="0" max="100" step="5" value="50">
+      <div class="rl"><span>road only</span><span>full perimeter</span></div>
+    </div>
+    <div class="blk">
+      <h2>Budget &amp; phasing</h2>
+      <label class="fld">Annual budget ($)</label>
+      <input type="number" id="budget" value="3000000" step="250000">
+      <label class="fld">Prioritize by</label>
+      <select id="prule">
+        <option value="perha">Cost per ha (low first)</option>
+        <option value="perplant">Cost per plant (low first)</option>
+        <option value="total">Total cost (low first)</option>
+      </select>
+      <div class="row2" style="margin-top:9px">
+        <button class="btn pri" id="buildplan">Build plan</button>
+        <button class="btn gho" id="clearplan">Clear</button>
+      </div>
+      <div class="hint" id="phaseout"></div>
+    </div>
+    <div class="blk">
+      <h2>Corridors</h2>
+      <div id="corrlist"></div>
+      <div class="mini"><button id="allon">All</button><button id="alloff">None</button></div>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="exclchk" checked>
+        Exclude young-lava segments <span class="mono" style="color:var(--muted)" id="excln"></span></label>
+    </div>
+    <div class="blk">
+      <button class="btn gho" id="share">Copy shareable link</button>
+      <div class="hint" id="shareout"></div>
+    </div>
+  </div>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="scope" id="scope">
+      <button data-s="net" class="on">Network</button>
+      <button data-s="plan">My plan</button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="legend" id="mzlegend" style="display:none;left:auto;right:11px"></div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h2>Program readout</h2>
+      <div class="csub" id="scopelbl">Network</div>
+      <div class="big" id="grand">$0</div>
+      <div class="split"><div class="i" id="splitI"></div><div class="m" id="splitM"></div></div>
+      <div class="splitlab"><span>Build <b id="implpct">0%</b> · <b id="impl$">$0</b></span>
+        <span><b id="maint$">$0</b> · <b id="maintpct">0%</b> Maintain</span></div>
+      <div style="margin-top:11px">
+        <div class="kv"><span class="k">Treated area</span><span class="v" id="area">0 ha</span></div>
+        <div class="kv"><span class="k">Corridor length</span><span class="v" id="len">0 km</span></div>
+        <div class="kv"><span class="k">Cost per hectare</span><span class="v" id="perhaR">$0</span></div>
+        <div class="kv"><span class="k">Cost per km</span><span class="v" id="perkm">$0</span></div>
+      </div>
+    </div>
+    <div class="card ledger">
+      <h2>Requisition ledger</h2>
+      <div class="csub">What it takes to build &amp; hold this plan (3 yr)</div>
+      <div class="line"><div class="lb">Native seedlings<small id="plantsub"></small></div><div class="qt" id="plants">0</div></div>
+      <div class="line"><div class="lb">Water delivered<small>irrigation, 3-yr expected</small></div><div class="qt" id="gal">0</div></div>
+      <div class="line"><div class="lb">Tanker loads<small>6,000-gal hauls</small></div><div class="qt" id="loads">0</div></div>
+      <div class="line"><div class="lb">Watering crew-hours<small id="crewsub"></small></div><div class="qt" id="crew">0</div></div>
+      <div class="line"><div class="lb">Fencing<small>ungulate exclusion</small></div><div class="qt" id="fencem">0 m</div></div>
+      <div class="line"><div class="lb">Total budget<small>build + 3-yr maintenance</small></div><div class="qt" id="ledtot">$0</div></div>
+      <div style="margin-top:11px">
+        <div style="font-family:'Barlow Condensed';font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Seedlings by species</div>
+        <div id="speclist"></div>
+      </div>
+      <button class="btn pri" id="export" style="margin-top:11px">Export plan as CSV</button>
+    </div>
+    <div class="card" id="detail">
+      <h2>Segment detail</h2>
+      <div class="dnull">Click a road segment to inspect species, cost breakdown, and water demand — then add it to your plan.</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// Static map context (small, not a notebook product). Real data loads in boot().
+const DB={"nksk":[[20.3,-155.34],[20.28,-155.9],[19.6,-156.12],[19.58,-155.34],[20.3,-155.34]],"towns":[["Kawaihae",20.033,-155.829],["Waimea",20.02,-155.668],["Waikoloa Village",19.938,-155.789],["Kailua-Kona",19.639,-155.997],["Hawi",20.241,-155.833]]};
+let SEG=[], GRIDS_META={}, MOISTURE=null;
+const INFL=1.332,DISC=0.02,CREW_RATE=45,TRUCK_GAL=6000;
+const PV1=[1,2,3].reduce((s,t)=>s+1/Math.pow(1+DISC,t),0);
+const WATER_C=0.0076,TRUCK_C=250/6000,CWD_MIN=651,CWD_MAX=5608;
+const FENCE_INSTALL=4877448/62796,FENCE_MAINT=6594/62796,FIRE_MAINT=0.10,WEED=159,UNGM=1.63;
+const IMPL={low:{ung:163,site:6031,olab:7919},high:{ung:163,site:196,olab:2917}};
+const CH={
+ 1:{L:['ʻUhaloa','Waltheria indica',8],M:['Naupaka kahakai','Scaevola taccada',15],H:['Naio','Myoporum sandwicense',12]},
+ 2:{L:['ʻŪlei','Osteomeles anthyllidifolia',12],M:['ʻAʻaliʻi','Dodonaea viscosa',15],H:['Alaheʻe','Psydrax odorata',12]},
+ 3:{L:['ʻIlima','Sida fallax',15],M:['ʻOhai','Sesbania tomentosa',40],H:['Milo','Thespesia populnea',12]}};
+const DSCEN={exp:[.28,.10],dry:[.45,.20],worst:[.65,.35]};
+const CORR_ORDER=['QUEEN KAAHUMANU','AKONI PULE','KAWAIHAE','WAIKOLOA','MAMALAHOA','DANIEL K INOUYE','SADDLE','HAWAII BELT','KOHALA MOUNTAIN'];
+const ELEV_COL={low:'#bfb9a6',high:'#2f5d4f'};
+const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'relief',
+  overlay:'none',opacity:.55,scope:'net',excl:true,corr:new Set(CORR_ORDER),plan:new Set(),sel:null};
+
+function laborPG(){return CREW_RATE/state.through}
+function deliv(){return WATER_C+TRUCK_C+laborPG()}
+function compute(s){
+  const L=s.length_m,cwd=s.cwd_mm,elev=s.elev,area=L*60/1e4,fcwd=cwd/1650;
+  const dens=2000-(2000-1000)*(cwd-CWD_MIN)/(CWD_MAX-CWD_MIN),npl=dens*area,perim=2*(L+60);
+  const [p2,p3]=DSCEN[state.drought];
+  const g1=52*.5*fcwd*npl,g2b=52*.5*fcwd*.2*npl,g2a=p2*26*.5*fcwd*.8*npl,g3=p3*13*.25*fcwd*.96*npl;
+  const gal=g1+g2b+g2a+g3,dv=deliv(),water=gal*dv;
+  const c=CH[state.choice],bp=(c.L[2]+c.M[2]+c.H[2])/3,ff=state.fence;
+  const impl={plant:npl*bp,olab:area*IMPL[elev].olab*INFL,site:area*IMPL[elev].site*INFL,
+    ung:area*IMPL[elev].ung*INFL,fence:perim*ff*FENCE_INSTALL*INFL};
+  const impl_t=impl.plant+impl.olab+impl.site+impl.ung+impl.fence;
+  const maint={irrig:water,weed:area*WEED*INFL*PV1,ung:area*UNGM*INFL*PV1,
+    fence:perim*ff*FENCE_MAINT*INFL*PV1,fire:L*FIRE_MAINT*INFL*PV1};
+  const maint_t=maint.irrig+maint.weed+maint.ung+maint.fence+maint.fire;
+  return {area,dens,npl,perim,gal,water,dv,impl,impl_t,maint,maint_t,tot:impl_t+maint_t,fenceM:perim*ff};
+}
+function lerp(a,b,t){return a+(b-a)*t}
+function hx(c){return '#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('')}
+function mix(A,B,t){return[lerp(A[0],B[0],t),lerp(A[1],B[1],t),lerp(A[2],B[2],t)]}
+const ROAD_A=[230,237,233],ROAD_B=[30,74,62];
+function roadRamp(t){return hx(mix(ROAD_A,ROAD_B,Math.max(0,Math.min(1,t))))}
+const SCHEMES={amber:[[242,234,217],[138,90,30]],teal:[[226,238,236],[29,90,86]],terrain:[[243,242,238],[74,70,61]]};
+function schemeRamp(sc,t){const[a,b]=SCHEMES[sc];return mix(a,b,Math.max(0,Math.min(1,t)))}
+const METRICS={
+  tot:{lbl:'Total cost',fmt:v=>'$'+kf(v),val:c=>c.tot},
+  perha:{lbl:'Cost / ha',fmt:v=>'$'+kf(v),val:c=>c.tot/c.area},
+  cwd:{lbl:'CWD mm/yr',fmt:v=>Math.round(v),val:(c,s)=>s.cwd_mm},
+  water:{lbl:'Water gal',fmt:v=>kf(v),val:c=>c.gal},
+  plants:{lbl:'Plants',fmt:v=>kf(v),val:c=>c.npl},
+  elev:{lbl:'Elevation',cat:true}};
+function kf(v){v=Math.round(v);if(v>=1e6)return(v/1e6).toFixed(v>=1e7?0:1)+'M';if(v>=1e3)return(v/1e3).toFixed(v>=1e4?0:1)+'k';return''+v}
+function money(v){return'$'+Math.round(v).toLocaleString('en-US')}
+function titleCase(r){return r.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ')}
+const map=L.map('map',{zoomControl:true,attributionControl:true}).setView([19.95,-155.73],10);
+const ATTRIB='Tiles &copy; Esri | Data: NKSK Green Fuel Break pipeline';
+const BASE={
+ relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+ topo:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+ sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+ plain:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'};
+let baseLayer=L.tileLayer(BASE.relief,{maxZoom:17,attribution:ATTRIB}).addTo(map);
+let refLabels=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',opacity:.9});
+function setBase(){
+  map.removeLayer(baseLayer);
+  baseLayer=L.tileLayer(BASE[state.basemap]||BASE.plain,{maxZoom:17,subdomains:'abcd',attribution:ATTRIB});
+  baseLayer.addTo(map);baseLayer.bringToBack();
+  if(state.basemap==='relief'||state.basemap==='sat'){refLabels.addTo(map);}else{map.removeLayer(refLabels);}
+}
+L.polygon(DB.nksk,{color:'#2f5d4f',weight:1.5,dashArray:'5 5',fill:false}).addTo(map);
+DB.towns.forEach(c=>L.marker([c[1],c[2]],{icon:L.divIcon({className:'',html:'<div class="townmark">'+c[0]+'</div>',iconSize:[1,1]})}).addTo(map));
+let ovLayer=null,mzLayer=null;
+const MZ_ORDER=['Arid','Very Dry','Moderately Dry','Seasonal Mesic','Moist Mesic','Moderately Wet','Very Wet'];
+const MZ_COLORS={'Arid':'#c9a24b','Very Dry':'#dab86a','Moderately Dry':'#cbcf7a','Seasonal Mesic':'#9cbf6b','Moist Mesic':'#6fae7c','Moderately Wet':'#4a8f8c','Very Wet':'#2f6d7a'};
+function buildMzLegend(){
+  if(!MOISTURE)return;
+  const present=new Set(MOISTURE.features.map(f=>f.properties.zone));
+  const items=MZ_ORDER.filter(z=>present.has(z));
+  document.getElementById('mzlegend').innerHTML='<div class="lt">Moisture zone</div><div class="legcat" style="flex-direction:column;gap:3px">'+
+    items.map(z=>`<span><i style="background:${MZ_COLORS[z]}"></i>${z}</span>`).join('')+'</div>';
+}
+function drawOverlay(){
+  if(ovLayer){map.removeLayer(ovLayer);ovLayer=null;}
+  if(mzLayer){map.removeLayer(mzLayer);mzLayer=null;}
+  const box=document.getElementById('ovbox'),mzl=document.getElementById('mzlegend');
+  mzl.style.display='none';
+  if(state.overlay==='none'){box.style.display='none';return;}
+  box.style.display='block';
+  if(state.overlay==='moisture'){
+    document.getElementById('ovmin').textContent='';document.getElementById('ovmax').textContent='';
+    if(MOISTURE){
+      mzLayer=L.geoJSON(MOISTURE,{style:f=>({color:'#ffffff',weight:.6,fillColor:MZ_COLORS[f.properties.zone]||'#999',fillOpacity:state.opacity})}).addTo(map);
+      mzLayer.bringToBack();mzl.style.display='block';
+    }
+    return;
+  }
+  const g=GRIDS_META[state.overlay];if(!g)return;
+  const[s,w,n,e]=g.bounds;
+  ovLayer=L.imageOverlay('data/grids/'+state.overlay+'.png',[[s,w],[n,e]],{opacity:state.opacity,interactive:false}).addTo(map);
+  ovLayer.bringToBack();
+  document.getElementById('ovmin').textContent=fmtOv(g.min);document.getElementById('ovmax').textContent=fmtOv(g.max);
+}
+function fmtOv(v){return state.overlay==='drought'?(v*100).toFixed(0)+'%':Math.round(v)+(state.overlay==='elev'?' m':' mm')}
+const layerById={},haloGroup=L.layerGroup().addTo(map);
+function visSegs(){return SEG.filter(s=>state.corr.has(s.road)&&!(state.excl&&s.excl))}
+function drawSegments(){
+  Object.values(layerById).forEach(l=>map.removeLayer(l));haloGroup.clearLayers();
+  const M=METRICS[state.metric];let lo=Infinity,hi=-Infinity;
+  if(!M.cat){visSegs().forEach(s=>{const v=M.val(compute(s),s);if(v<lo)lo=v;if(v>hi)hi=v;});}
+  SEG.forEach(s=>{
+    const shown=state.corr.has(s.road),greyed=(state.excl&&s.excl),c=compute(s);let col;
+    if(greyed)col='#a9a79c';else if(M.cat)col=ELEV_COL[s.elev];else col=roadRamp((M.val(c,s)-lo)/(hi-lo||1));
+    const inPlan=state.plan.has(s.id),isSel=state.sel===s.id;
+    if(inPlan)haloGroup.addLayer(L.polyline(s.line,{color:'#1d1f1c',weight:isSel?12:10,opacity:.9,lineCap:'round'}));
+    const line=L.polyline(s.line,{color:shown?col:'#cbcabf',
+      weight:isSel?9:inPlan?7:greyed?3:5,
+      opacity:shown?(state.scope==='plan'&&!inPlan?.16:.95):.3,
+      dashArray:greyed?'2 5':null,lineCap:'round'});
+    line.bindTooltip(`${titleCase(s.road)} · seg ${s.id}${s.excl?' · young lava':''}<br>`+
+      (M.cat?(s.elev+' elev'):`${M.lbl}: ${M.fmt(M.val(c,s))}`),{className:'tip',sticky:true});
+    line.on('click',()=>{state.sel=s.id;drawSegments();renderDetail();});
+    line.addTo(map);layerById[s.id]=line;
+  });
+  drawLegend(lo,hi);
+}
+function drawLegend(lo,hi){
+  const M=METRICS[state.metric],el=document.getElementById('legend');let h='';
+  if(M.cat)h=`<div class="lt">Elevation class</div><div class="legcat"><span><i style="background:${ELEV_COL.low}"></i>Low &lt;1000 m</span><span><i style="background:${ELEV_COL.high}"></i>High ≥1000 m</span></div>`;
+  else h=`<div class="lt">${M.lbl}</div><div class="ramp" style="background:linear-gradient(90deg,${roadRamp(0)},${roadRamp(.5)},${roadRamp(1)})"></div><div class="ramplab"><span>${M.fmt(lo)}</span><span>${M.fmt(hi)}</span></div>`;
+  if(state.excl&&SEG.some(s=>s.excl))h+=`<div class="legdiv"></div><div class="legcat"><span><i style="background:#a9a79c;border:1px dashed #7a7a70"></i>Excluded (young lava)</span></div>`;
+  el.innerHTML=h;
+}
+function activeSegs(){return state.scope==='plan'?SEG.filter(s=>state.plan.has(s.id)):visSegs();}
+function renderAll(){renderReadout();renderLedger();renderDetail();}
+function renderReadout(){
+  const A=activeSegs().map(s=>({s,c:compute(s)}));let tot=0,impl=0,maint=0,area=0,len=0;
+  A.forEach(({s,c})=>{tot+=c.tot;impl+=c.impl_t;maint+=c.maint_t;area+=c.area;len+=s.length_m;});len/=1000;
+  document.getElementById('grand').textContent=money(tot);
+  const ip=tot?impl/tot*100:0;
+  document.getElementById('splitI').style.width=ip+'%';document.getElementById('splitM').style.width=(100-ip)+'%';
+  document.getElementById('implpct').textContent=Math.round(ip)+'%';document.getElementById('maintpct').textContent=Math.round(100-ip)+'%';
+  document.getElementById('impl$').textContent=money(impl);document.getElementById('maint$').textContent=money(maint);
+  document.getElementById('area').textContent=area.toFixed(0)+' ha';document.getElementById('len').textContent=len.toFixed(1)+' km';
+  document.getElementById('perhaR').textContent=area?money(tot/area)+'/ha':'—';
+  document.getElementById('perkm').textContent=len?money(tot/len)+'/km':'—';
+  const n=A.length;document.getElementById('scopelbl').textContent=(state.scope==='plan'?'My plan · ':'Network · ')+n+' segment'+(n==1?'':'s');
+}
+function renderLedger(){
+  const A=activeSegs().map(s=>({s,c:compute(s)}));let gal=0,fenceM=0,tot=0,npl=0;
+  A.forEach(({c})=>{gal+=c.gal;fenceM+=c.fenceM;tot+=c.tot;npl+=c.npl;});
+  const per=npl/3,c=CH[state.choice];
+  document.getElementById('plants').textContent=Math.round(npl).toLocaleString();
+  document.getElementById('gal').textContent=Math.round(gal).toLocaleString()+' gal';
+  document.getElementById('loads').textContent=Math.round(gal/TRUCK_GAL).toLocaleString();
+  document.getElementById('crew').textContent=Math.round(gal/state.through).toLocaleString()+' hr';
+  document.getElementById('crewsub').textContent='at '+state.through+' gal/hr';
+  document.getElementById('fencem').textContent=Math.round(fenceM).toLocaleString()+' m';
+  document.getElementById('ledtot').textContent=money(tot);
+  document.getElementById('plantsub').textContent=`${c.L[0]} · ${c.M[0]} · ${c.H[0]}`;
+  document.getElementById('speclist').innerHTML=[['High',c.H],['Med',c.M],['Low',c.L]].map(([t,sp])=>
+    `<div class="spec"><span class="sn">${sp[0]} <em>· ${sp[1]}</em></span><span class="sq">${Math.round(per).toLocaleString()} · $${sp[2]}/ea</span></div>`).join('');
+}
+function renderDetail(){
+  const el=document.getElementById('detail');
+  if(state.sel==null){el.innerHTML='<h2>Segment detail</h2><div class="dnull">Click a road segment to inspect species, cost breakdown, and water demand — then add it to your plan.</div>';return;}
+  const s=SEG.find(x=>x.id===state.sel),c=compute(s),inPlan=state.plan.has(s.id),cc=CH[state.choice];
+  const comp=[['Plant material',c.impl.plant],['Outplant labor',c.impl.olab],['Site prep',c.impl.site],
+    ['Fencing',c.impl.fence],['Irrigation 3yr',c.maint.irrig],['Weed/other',c.impl.ung+c.maint.weed+c.maint.ung+c.maint.fence+c.maint.fire]];
+  const mx=Math.max(...comp.map(x=>x[1]));
+  el.innerHTML=`<div class="dtitle">${titleCase(s.road)} <span class="pill ${s.excl?'excl':s.elev}">${s.excl?'young lava':s.elev+' elev'}</span></div>
+    <div class="dsub">Segment ${s.id} · ${(s.length_m/1000).toFixed(2)} km · ${c.area.toFixed(1)} ha treated</div>
+    <div class="kv"><span class="k">Aridity (CWD)</span><span class="v">${Math.round(s.cwd_mm)} mm/yr</span></div>
+    <div class="kv"><span class="k">Density</span><span class="v">${Math.round(c.dens)} /ha</span></div>
+    <div class="kv"><span class="k">Seedlings</span><span class="v">${Math.round(c.npl).toLocaleString()}</span></div>
+    <div class="kv"><span class="k">Water (3-yr)</span><span class="v">${Math.round(c.gal).toLocaleString()} gal</span></div>
+    <div class="kv"><span class="k">Tanker loads</span><span class="v">${Math.round(c.gal/TRUCK_GAL)}</span></div>
+    <div class="kv"><span class="k">Total cost</span><span class="v">${money(c.tot)}</span></div>
+    <div style="font-family:'Barlow Condensed';font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:11px 0 2px">Species (rank ${state.choice})</div>
+    <div class="spec"><span class="sn">High · ${cc.H[0]} <em>${cc.H[1]}</em></span></div>
+    <div class="spec"><span class="sn">Med · ${cc.M[0]} <em>${cc.M[1]}</em></span></div>
+    <div class="spec"><span class="sn">Low · ${cc.L[0]} <em>${cc.L[1]}</em></span></div>
+    <div class="bars">${comp.map(([n,v])=>`<div class="bar"><span class="bn">${n}</span><span class="bt"><span class="bf" style="width:${v/mx*100}%"></span></span><span class="bv">${money(v)}</span></div>`).join('')}</div>
+    <button class="addbtn ${inPlan?'rm':''}" onclick="togglePlan(${s.id})">${inPlan?'Remove from plan':'Add to plan'}</button>`;
+}
+window.togglePlan=function(id){state.plan.has(id)?state.plan.delete(id):state.plan.add(id);drawSegments();renderAll();syncHash();};
+function buildCorr(){
+  const cnt={};SEG.forEach(s=>cnt[s.road]=(cnt[s.road]||0)+1);
+  const el=document.getElementById('corrlist');
+  el.innerHTML=CORR_ORDER.map(r=>{const sm=SEG.filter(s=>s.road===r);
+    return `<label class="corr"><input type="checkbox" data-r="${r}" ${state.corr.has(r)?'checked':''}><span class="sw" style="background:${ELEV_COL[sm[0].elev]}"></span><span class="nm">${titleCase(r)}</span><span class="ct">${cnt[r]}</span></label>`;}).join('');
+  el.querySelectorAll('input').forEach(cb=>cb.addEventListener('change',e=>{const r=e.target.dataset.r;e.target.checked?state.corr.add(r):state.corr.delete(r);drawSegments();renderAll();syncHash();}));
+  document.getElementById('excln').textContent='('+SEG.filter(s=>s.excl).length+')';
+}
+function buildPlan(){
+  const budget=+document.getElementById('budget').value,rule=document.getElementById('prule').value;
+  let cand=visSegs().map(s=>{const c=compute(s);return{s,c,key:rule==='perha'?c.tot/c.area:rule==='perplant'?c.tot/c.npl:c.tot};});
+  cand.sort((a,b)=>a.key-b.key);
+  state.plan.clear();let spent=0,n=0,area=0;
+  for(const{s,c}of cand){if(spent+c.tot<=budget){state.plan.add(s.id);spent+=c.tot;n++;area+=c.area;}}
+  state.scope='plan';document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x.dataset.s==='plan'));
+  document.getElementById('phaseout').textContent=`Selected ${n} segments · ${area.toFixed(0)} ha · ${money(spent)} of ${money(budget)} (${(spent/budget*100).toFixed(0)}%).`;
+  drawSegments();renderAll();syncHash();
+}
+function syncHash(){
+  const o={c:state.choice,m:state.metric,t:state.through,f:state.fence,d:state.drought,b:state.basemap,
+    o:state.overlay,op:state.opacity,x:state.excl?1:0,sc:state.scope,cr:[...state.corr].map(r=>CORR_ORDER.indexOf(r)),pl:[...state.plan]};
+  history.replaceState(null,'','#'+encodeURIComponent(JSON.stringify(o)));
+}
+function loadHash(){
+  if(!location.hash)return;
+  try{const o=JSON.parse(decodeURIComponent(location.hash.slice(1)));
+    state.choice=o.c;state.metric=o.m;state.through=o.t;state.fence=o.f;state.drought=o.d;state.basemap=o.b;
+    state.overlay=o.o;state.opacity=o.op;state.excl=!!o.x;state.scope=o.sc;
+    state.corr=new Set((o.cr||[]).map(i=>CORR_ORDER[i]));state.plan=new Set(o.pl||[]);
+    document.querySelectorAll('#choice button').forEach(x=>x.classList.toggle('on',+x.dataset.c===state.choice));
+    document.querySelectorAll('#drought button').forEach(x=>x.classList.toggle('on',x.dataset.d===state.drought));
+    document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x.dataset.s===state.scope));
+    document.getElementById('metric').value=state.metric;document.getElementById('basemap').value=state.basemap;
+    document.getElementById('overlay').value=state.overlay;
+    document.getElementById('through').value=state.through;document.getElementById('throughv').textContent=state.through;
+    document.getElementById('fence').value=state.fence*100;document.getElementById('fencev').textContent=(state.fence*100)+'%';
+    document.getElementById('opacity').value=state.opacity*100;document.getElementById('opv').textContent=(state.opacity*100)+'%';
+    document.getElementById('exclchk').checked=state.excl;
+  }catch(e){}
+}
+const $=id=>document.getElementById(id);
+$('choice').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.choice=+b.dataset.c;document.querySelectorAll('#choice button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
+$('drought').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.drought=b.dataset.d;document.querySelectorAll('#drought button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
+$('metric').addEventListener('change',e=>{state.metric=e.target.value;drawSegments();syncHash();});
+$('basemap').addEventListener('change',e=>{state.basemap=e.target.value;setBase();syncHash();});
+$('overlay').addEventListener('change',e=>{state.overlay=e.target.value;drawOverlay();syncHash();});
+$('opacity').addEventListener('input',e=>{state.opacity=+e.target.value/100;$('opv').textContent=e.target.value+'%';if(ovLayer)ovLayer.setOpacity(state.opacity);if(mzLayer)mzLayer.setStyle({fillOpacity:state.opacity});syncHash();});
+$('through').addEventListener('input',e=>{state.through=+e.target.value;$('throughv').textContent=state.through;$('delivv').textContent='$'+deliv().toFixed(3)+'/gal';drawSegments();renderAll();syncHash();});
+$('fence').addEventListener('input',e=>{state.fence=+e.target.value/100;$('fencev').textContent=e.target.value+'%';drawSegments();renderAll();syncHash();});
+$('scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.scope=b.dataset.s;document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
+$('exclchk').addEventListener('change',e=>{state.excl=e.target.checked;drawSegments();renderAll();syncHash();});
+$('allon').addEventListener('click',()=>{state.corr=new Set(CORR_ORDER);buildCorr();drawSegments();renderAll();syncHash();});
+$('alloff').addEventListener('click',()=>{state.corr.clear();buildCorr();drawSegments();renderAll();syncHash();});
+$('buildplan').addEventListener('click',buildPlan);
+$('clearplan').addEventListener('click',()=>{state.plan.clear();state.scope='net';document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x.dataset.s==='net'));$('phaseout').textContent='';drawSegments();renderAll();syncHash();});
+$('share').addEventListener('click',()=>{syncHash();navigator.clipboard&&navigator.clipboard.writeText(location.href);$('shareout').textContent='Link copied — reopens this exact scenario.';setTimeout(()=>$('shareout').textContent='',2500);});
+$('export').addEventListener('click',()=>{
+  const A=activeSegs(),c=CH[state.choice];
+  const head=['seg_id','road','elev_class','excluded','length_m','cwd_mm','area_ha','density_per_ha','n_plants',
+    'species_low','species_med','species_high','water_gal_3yr','tanker_loads','impl_cost','maint_cost','total_cost'];
+  const rows=A.map(s=>{const x=compute(s);return[s.id,s.road,s.elev,s.excl,s.length_m.toFixed(0),s.cwd_mm.toFixed(0),
+    x.area.toFixed(2),x.dens.toFixed(0),x.npl.toFixed(0),c.L[0],c.M[0],c.H[0],x.gal.toFixed(0),(x.gal/TRUCK_GAL).toFixed(0),
+    x.impl_t.toFixed(0),x.maint_t.toFixed(0),x.tot.toFixed(0)].join(',');});
+  const b=new Blob([[head.join(','),...rows].join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download='nksk_fuelbreak_plan_choice'+state.choice+'.csv';a.click();URL.revokeObjectURL(u);});
+async function boot(){
+  try{
+    const gj=await (await fetch('data/segments.geojson')).json();
+    SEG=gj.features.map((f,i)=>{const c=f.geometry.coordinates,p=f.properties;return{
+      id:p.id??i,road:p.road,elev:p.elev,length_m:p.length_m,cwd_mm:p.cwd_mm,excl:p.excl?1:0,
+      a:p.a||[c[0][1],c[0][0]],b:p.b||[c[c.length-1][1],c[c.length-1][0]],
+      line:c.map(x=>[x[1],x[0]])};});
+    for(const k of ['cwd','elev','pet','aet']){try{GRIDS_META[k]=await (await fetch('data/grids/'+k+'.json')).json();}catch(e){}}
+    try{MOISTURE=await (await fetch('data/moisture_zones.geojson')).json();}catch(e){}
+  }catch(err){
+    document.getElementById('map').innerHTML='<div style="padding:24px;font-family:sans-serif;color:#a6402e">Could not load data/. Serve this folder over http (e.g. <code>python -m http.server</code>) rather than opening the file directly.</div>';
+    console.error(err);return;
+  }
+  buildMzLegend();
+  loadHash();buildCorr();setBase();drawOverlay();drawSegments();renderAll();
+  $('delivv').textContent='$'+deliv().toFixed(3)+'/gal';
+}
+boot();
+</script>
+</body>
+</html>
