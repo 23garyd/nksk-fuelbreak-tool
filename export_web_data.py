@@ -13,15 +13,16 @@ import os, json, re, warnings
 import numpy as np
 import geopandas as gpd
 import rasterio
-from rasterio.windows import from_bounds
+from rasterio.windows import from_bounds, intersection, Window
 from rasterio.transform import array_bounds
 from rasterio.warp import transform_bounds
 import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Source data lives one level up (the 26X_GFB_Data project folder).
-ROOT = os.path.abspath(os.path.join(HERE, ".."))
+# Source data root = the 26X_GFB_Data project folder (one level up by default).
+# If this tool folder lives elsewhere, set NKSK_SRC=/path/to/26X_GFB_Data.
+ROOT = os.environ.get("NKSK_SRC") or os.path.abspath(os.path.join(HERE, ".."))
 def src(*p): return os.path.join(ROOT, *p)
 def out(*p): return os.path.join(HERE, "data", *p)
 os.makedirs(out("grids"), exist_ok=True)
@@ -65,6 +66,40 @@ def elev_class(z):
         return "low"
     return "high" if z >= 1000 else "low"
 
+# ---- per-segment recommended species (real, distribution-aware) + cost/sci lookup ----
+import pandas as pd, unicodedata
+def _norm(x):
+    x = str(x).strip().lower().replace("ʻ", "").replace("'", "").replace("ʼ", "")
+    return "".join(c for c in unicodedata.normalize("NFD", x) if unicodedata.category(c) != "Mn")
+
+_costdf = pd.read_excel(src("inputs", "outplanting_costs_hawaii.xlsx"),
+                        sheet_name="Outplanting Cost List", header=3)
+SPCOST = {}
+for _, r in _costdf.iterrows():
+    if pd.isna(r.get("Hawaiian Name")):
+        continue
+    try: SPCOST[_norm(r["Hawaiian Name"])] = float(r["Highest Price ($)"])
+    except Exception: pass
+
+_gn = pd.read_excel(src("inputs", "gonative_combined_scored_3_13.xlsx"), sheet_name="Combined Results")
+_hc = [c for c in _gn.columns if "Hawaiian" in str(c)][0]
+_sc = [c for c in _gn.columns if "Scientific" in str(c)][0]
+SPSCI = {}
+for _, r in _gn.iterrows():
+    if pd.isna(r[_hc]): continue
+    SPSCI[_norm(r[_hc])] = str(r[_sc]).strip()
+for _, r in _costdf.iterrows():  # fill any gaps from the cost list
+    if pd.isna(r.get("Hawaiian Name")) or pd.isna(r.get("Scientific Name")): continue
+    SPSCI.setdefault(_norm(r["Hawaiian Name"]), str(r["Scientific Name"]).strip())
+
+DEFAULT_COST = 12.0
+SPCOL = {"1": ["c1L_sp", "c1M_sp", "c1H_sp"],
+         "2": ["c2L_sp", "c2M_sp", "c2H_sp"],
+         "3": ["c3L_sp", "c3M_sp", "c3H_sp"]}
+def _spval(r, c):
+    v = r[c] if c in r else None
+    return None if (v is None or (isinstance(v, float) and pd.isna(v))) else str(v)
+
 feats = []
 for i, (_, r) in enumerate(seg.iterrows()):
     geom = r.geometry
@@ -93,12 +128,27 @@ for i, (_, r) in enumerate(seg.iterrows()):
             "excl": excl_map.get(sid_raw, 0),
             "a": latlon[0],
             "b": latlon[-1],
+            # real per-segment species by choice tier -> [Low, Med, High]
+            "sp": {t: [_spval(r, c) for c in cols] for t, cols in SPCOL.items()},
         },
     })
-json.dump({"type": "FeatureCollection", "features": feats}, open(out("segments.geojson"), "w"))
+json.dump({"type": "FeatureCollection", "features": feats},
+          open(out("segments.geojson"), "w"), ensure_ascii=False)
 print(f"segments.geojson: {len(feats)} segments  "
       f"(high={sum(f['properties']['elev']=='high' for f in feats)}, "
       f"excl={sum(f['properties']['excl'] for f in feats)})")
+
+# species_costs.json: normalized-name -> {name, sci, cost} for every species used
+_used = set()
+for cols in SPCOL.values():
+    for c in cols:
+        _used |= set(seg[c].dropna().astype(str))
+SPECIES = {_norm(nm): {"name": nm, "sci": SPSCI.get(_norm(nm), ""),
+                       "cost": SPCOST.get(_norm(nm), DEFAULT_COST)} for nm in _used}
+json.dump(SPECIES, open(out("species_costs.json"), "w"), ensure_ascii=False)
+print(f"species_costs.json: {len(SPECIES)} species  "
+      f"(missing cost -> default ${DEFAULT_COST:.0f}: "
+      f"{sorted(nm for nm in _used if _norm(nm) not in SPCOST)})")
 
 # ------------------------------------------------------------ 2. MOISTURE ZONES
 mz = gpd.read_file(src("inputs", "Moisture_Zones", "Moisture_Zones.shp")).to_crs(4326)
@@ -132,8 +182,11 @@ json.dump({"type": "FeatureCollection",
 print("nksk_boundary.geojson: 1 polygon")
 
 # ------------------------------------------------------------------ 3. RASTERS
-# clip window (lon/lat) = padded segment bbox
-CLIP = (minx - 0.03, miny - 0.03, maxx + 0.03, maxy + 0.03)  # (W,S,E,N)
+# clip window (lon/lat) = the NKSK boundary bbox (padded), so every overlay
+# spans and aligns to the boundary. export_raster then clamps to each raster's
+# own extent, so bounds always match the actual data.
+bminx, bminy, bmaxx, bmaxy = bnd.total_bounds
+CLIP = (bminx - 0.01, bminy - 0.01, bmaxx + 0.01, bmaxy + 0.01)  # (W,S,E,N)
 MAXDIM = 1100
 
 def export_raster(path, name, cmap):
@@ -144,7 +197,10 @@ def export_raster(path, name, cmap):
             l, b, rr, t = transform_bounds("EPSG:4326", s.crs, w, sth, e, n)
         else:
             l, b, rr, t = w, sth, e, n
-        win = from_bounds(l, b, rr, t, s.transform).round_offsets().round_lengths()
+        win = from_bounds(l, b, rr, t, s.transform)
+        # clamp the window to the dataset so the PNG bounds match the ACTUAL data
+        # extent (otherwise a window that overhangs the raster shifts the overlay)
+        win = intersection(win, Window(0, 0, s.width, s.height)).round_offsets().round_lengths()
         # decimate so the longest side <= MAXDIM
         sc = max(win.width / MAXDIM, win.height / MAXDIM, 1)
         oh, ow = max(1, int(win.height / sc)), max(1, int(win.width / sc))
@@ -152,16 +208,15 @@ def export_raster(path, name, cmap):
                      resampling=rasterio.enums.Resampling.average).astype("float64")
         wt = s.window_transform(win)
         wb = array_bounds(win.height, win.width, wt)  # (left,bottom,right,top) in src CRS
-        nod = s.nodata
+        src_crs, nod = s.crs, s.nodata
     if nod is not None:
         arr[arr == nod] = np.nan
     arr[arr < -1e30] = np.nan
     # reproject bounds to lon/lat -> (W,S,E,N)
-    with rasterio.open(path) as s:
-        if s.crs.to_epsg() != 4326:
-            W, S, E, N = transform_bounds(s.crs, "EPSG:4326", *wb)
-        else:
-            W, S, E, N = wb
+    if src_crs.to_epsg() != 4326:
+        W, S, E, N = transform_bounds(src_crs, "EPSG:4326", *wb)
+    else:
+        W, S, E, N = wb
     vmin, vmax = float(np.nanmin(arr)), float(np.nanmax(arr))
     norm = plt.Normalize(vmin, vmax)
     rgba = plt.get_cmap(cmap)(norm(arr))
