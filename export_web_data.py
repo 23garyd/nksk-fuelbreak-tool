@@ -16,6 +16,10 @@ import rasterio
 from rasterio.windows import from_bounds, intersection, Window
 from rasterio.transform import array_bounds
 from rasterio.warp import transform_bounds
+from rasterio.vrt import WarpedVRT
+from rasterio.enums import Resampling
+from rasterio.features import geometry_mask
+from affine import Affine
 import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
@@ -150,36 +154,34 @@ print(f"species_costs.json: {len(SPECIES)} species  "
       f"(missing cost -> default ${DEFAULT_COST:.0f}: "
       f"{sorted(nm for nm in _used if _norm(nm) not in SPCOST)})")
 
-# ------------------------------------------------------------ 2. MOISTURE ZONES
-mz = gpd.read_file(src("inputs", "Moisture_Zones", "Moisture_Zones.shp")).to_crs(4326)
-zone_col = "moisturezo" if "moisturezo" in mz.columns else "zone"
-# clip to a padded segment bbox so we only ship the relevant polygons
-minx, miny, maxx, maxy = seg.total_bounds
-pad = 0.06
-mz = mz.clip((minx - pad, miny - pad, maxx + pad, maxy + pad))
-mz["geometry"] = mz.geometry.simplify(0.0002, preserve_topology=True)
-mz = mz[[zone_col, "geometry"]].rename(columns={zone_col: "zone"})
-mz = mz[~mz.geometry.is_empty & mz.geometry.notna()]
-# serialize with json (GDAL can't overwrite files on some mounted filesystems)
+# ------------------------------------------------------------- 2. NKSK BOUNDARY
 from shapely.geometry import mapping
 def _round_geom(g, nd=5):
     return json.loads(json.dumps(mapping(g)),
                       parse_float=lambda x: round(float(x), nd))
+bnd = gpd.read_file(src("inputs", "NKSK-boundaries", "nksk.shp")).to_crs(4326)
+bnd_full = bnd.geometry.union_all()                              # exact, for masking
+bnd_geom = bnd.geometry.simplify(0.0003, preserve_topology=True).union_all()  # for display
+json.dump({"type": "FeatureCollection",
+           "features": [{"type": "Feature", "properties": {"name": "NKSK"},
+                         "geometry": _round_geom(bnd_geom)}]},
+          open(out("nksk_boundary.geojson"), "w"))
+print("nksk_boundary.geojson: 1 polygon")
+
+# ------------------------------------------------------------ 3. MOISTURE ZONES
+mz = gpd.read_file(src("inputs", "Moisture_Zones", "Moisture_Zones.shp")).to_crs(4326)
+zone_col = "moisturezo" if "moisturezo" in mz.columns else "zone"
+# clip to the actual NKSK boundary polygon so the layer fills the boundary shape
+mz = mz.clip(bnd_full)
+mz["geometry"] = mz.geometry.simplify(0.0002, preserve_topology=True)
+mz = mz[[zone_col, "geometry"]].rename(columns={zone_col: "zone"})
+mz = mz[~mz.geometry.is_empty & mz.geometry.notna()]
 mz_feats = [{"type": "Feature", "properties": {"zone": row["zone"]},
              "geometry": _round_geom(row["geometry"])}
             for _, row in mz.iterrows()]
 json.dump({"type": "FeatureCollection", "features": mz_feats},
           open(out("moisture_zones.geojson"), "w"))
 print(f"moisture_zones.geojson: {len(mz_feats)} polygons, zones={sorted(mz['zone'].dropna().unique())}")
-
-# ------------------------------------------------------------- 2b. NKSK BOUNDARY
-bnd = gpd.read_file(src("inputs", "NKSK-boundaries", "nksk.shp")).to_crs(4326)
-bnd_geom = bnd.geometry.simplify(0.0003, preserve_topology=True).union_all()
-json.dump({"type": "FeatureCollection",
-           "features": [{"type": "Feature", "properties": {"name": "NKSK"},
-                         "geometry": _round_geom(bnd_geom)}]},
-          open(out("nksk_boundary.geojson"), "w"))
-print("nksk_boundary.geojson: 1 polygon")
 
 # ------------------------------------------------------------------ 3. RASTERS
 # clip window (lon/lat) = the NKSK boundary bbox (padded), so every overlay
@@ -190,33 +192,28 @@ CLIP = (bminx - 0.01, bminy - 0.01, bmaxx + 0.01, bmaxy + 0.01)  # (W,S,E,N)
 MAXDIM = 1100
 
 def export_raster(path, name, cmap):
-    with rasterio.open(path) as s:
-        w, sth, e, n = CLIP
-        # clip bbox -> source CRS
-        if s.crs.to_epsg() != 4326:
-            l, b, rr, t = transform_bounds("EPSG:4326", s.crs, w, sth, e, n)
-        else:
-            l, b, rr, t = w, sth, e, n
-        win = from_bounds(l, b, rr, t, s.transform)
-        # clamp the window to the dataset so the PNG bounds match the ACTUAL data
-        # extent (otherwise a window that overhangs the raster shifts the overlay)
-        win = intersection(win, Window(0, 0, s.width, s.height)).round_offsets().round_lengths()
-        # decimate so the longest side <= MAXDIM
-        sc = max(win.width / MAXDIM, win.height / MAXDIM, 1)
-        oh, ow = max(1, int(win.height / sc)), max(1, int(win.width / sc))
-        arr = s.read(1, window=win, out_shape=(oh, ow),
-                     resampling=rasterio.enums.Resampling.average).astype("float64")
-        wt = s.window_transform(win)
-        wb = array_bounds(win.height, win.width, wt)  # (left,bottom,right,top) in src CRS
-        src_crs, nod = s.crs, s.nodata
+    w, sth, e, n = CLIP
+    with rasterio.open(path) as ds:
+        # reproject every raster to EPSG:4326 so its pixel grid is geographic
+        # north-up (fixes UTM rasters like the DEM that were rotated on the map)
+        with WarpedVRT(ds, crs="EPSG:4326", resampling=Resampling.bilinear) as vrt:
+            win = from_bounds(w, sth, e, n, vrt.transform)
+            win = intersection(win, Window(0, 0, vrt.width, vrt.height)).round_offsets().round_lengths()
+            scd = max(win.width / MAXDIM, win.height / MAXDIM, 1)
+            oh, ow = max(1, int(win.height / scd)), max(1, int(win.width / scd))
+            arr = vrt.read(1, window=win, out_shape=(oh, ow),
+                           resampling=Resampling.average).astype("float64")
+            wt = vrt.window_transform(win)
+            out_transform = wt * Affine.scale(win.width / ow, win.height / oh)  # decimated grid
+            nod = vrt.nodata
     if nod is not None:
         arr[arr == nod] = np.nan
     arr[arr < -1e30] = np.nan
-    # reproject bounds to lon/lat -> (W,S,E,N)
-    if src_crs.to_epsg() != 4326:
-        W, S, E, N = transform_bounds(src_crs, "EPSG:4326", *wb)
-    else:
-        W, S, E, N = wb
+    # mask everything outside the NKSK boundary -> transparent (aligns to boundary)
+    outside = geometry_mask([mapping(bnd_full)], out_shape=(oh, ow),
+                            transform=out_transform, invert=False)
+    arr[outside] = np.nan
+    W, S, E, N = array_bounds(oh, ow, out_transform)  # already lon/lat
     vmin, vmax = float(np.nanmin(arr)), float(np.nanmax(arr))
     norm = plt.Normalize(vmin, vmax)
     rgba = plt.get_cmap(cmap)(norm(arr))
