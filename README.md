@@ -5,7 +5,7 @@ green fuel break. It lets you explore the candidate road-segment network, pick a
 planting palette, adjust cost and drought assumptions, build a budget-constrained plan,
 and export it — all running client-side on real pipeline outputs.
 
-**Live site:** `https://<your-username>.github.io/nksk-fuelbreak-tool/` 
+**Live site:** `https://23garyd.github.io/nksk-fuelbreak-tool/` 
 
 ## What the tool models
 
