@@ -15,14 +15,14 @@
   --tan:#bfb9a6;--warn:#a6402e;
 }
 *{box-sizing:border-box}html,body{margin:0;height:100%}
-body{font-family:"Barlow",system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:14px}
+body{font-family:"Barlow",system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:14px;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 h1,h2,h3,.cond{font-family:"Barlow Condensed",sans-serif}
 header{background:var(--ink);color:#f1f0e9;padding:11px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 header h1{font-weight:700;font-size:21px;letter-spacing:.03em;margin:0;text-transform:uppercase}
 header .sub{color:#a9a89d;font-size:12.5px;max-width:560px;line-height:1.35}
 .tag{font-family:"Barlow Condensed";font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;border:1px solid #6b6f62;color:#c9c8bd;padding:2px 8px;border-radius:2px;margin-left:auto}
-.shell{display:grid;grid-template-columns:300px 1fr 336px;height:calc(100vh - 47px)}
+.shell{display:grid;grid-template-columns:300px 1fr 336px;flex:1;min-height:0}
 .rail,.side{overflow-y:auto;background:var(--bg)}
 .rail{border-right:1px solid var(--line2)}.side{border-left:1px solid var(--line2)}
 .mapwrap{position:relative;background:#dfe1da}
@@ -100,13 +100,13 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 .leaflet-tooltip.tip{background:var(--ink);color:#f1f0e9;border:0;border-radius:3px;font-family:"IBM Plex Mono";font-size:10.5px;padding:4px 7px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .leaflet-tooltip.tip::before{display:none}
 .townmark{color:var(--ink);font-family:"Barlow Condensed";font-weight:700;font-size:11px;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
-@media(max-width:980px){.shell{grid-template-columns:1fr;height:auto}.mapwrap{height:62vh}}
+@media(max-width:980px){body{height:auto;overflow:auto}.shell{grid-template-columns:1fr;flex:none;height:auto}.mapwrap{height:62vh}}
 </style>
 </head>
 <body>
 <header>
   <h1>NKSK Green Fuel Break</h1>
-  <span class="sub">Plan native dryland fuel breaks along North Kona–South Kohala road corridors — species, water, labor, and cost to build and hold them for three years.</span>
+  <span class="sub">Plan native dryland fuel breaks along North Kona–South Kohala road corridors (species, water, labor, and cost) to build and hold them for three years.</span>
   <span class="tag">Prototype</span>
 </header>
 <div class="shell">
@@ -123,10 +123,10 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       <h2>Basemap &amp; layers</h2>
       <label class="fld">Basemap</label>
       <select id="basemap">
-        <option value="relief" selected>Shaded relief</option>
+        <option value="relief">Shaded relief</option>
         <option value="topo">Topographic</option>
         <option value="sat">Satellite</option>
-        <option value="plain">Plain</option>
+        <option value="plain" selected>Plain</option>
       </select>
       <label class="fld">Data overlay (raster)</label>
       <select id="overlay">
@@ -264,7 +264,7 @@ const CH={
 const DSCEN={exp:[.28,.10],dry:[.45,.20],worst:[.65,.35]};
 const CORR_ORDER=['QUEEN KAAHUMANU','AKONI PULE','KAWAIHAE','WAIKOLOA','MAMALAHOA','DANIEL K INOUYE','SADDLE','HAWAII BELT','KOHALA MOUNTAIN'];
 const ELEV_COL={low:'#bfb9a6',high:'#2f5d4f'};
-const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'relief',
+const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'plain',
   overlay:'none',opacity:.55,scope:'net',excl:true,corr:new Set(CORR_ORDER),plan:new Set(),sel:null};
 
 function laborPG(){return CREW_RATE/state.through}
@@ -309,7 +309,7 @@ const BASE={
  topo:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
  sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
  plain:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'};
-let baseLayer=L.tileLayer(BASE.relief,{maxZoom:17,attribution:ATTRIB}).addTo(map);
+let baseLayer=L.tileLayer(BASE.plain,{maxZoom:17,subdomains:'abcd',attribution:ATTRIB}).addTo(map);
 let refLabels=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',opacity:.9});
 function setBase(){
   map.removeLayer(baseLayer);
@@ -519,6 +519,7 @@ async function boot(){
   }
   buildMzLegend();
   loadHash();buildCorr();setBase();drawBoundary();drawOverlay();drawSegments();renderAll();
+  if(nkskLayer){try{map.fitBounds(nkskLayer.getBounds(),{padding:[12,12]});}catch(e){}}
   $('delivv').textContent='$'+deliv().toFixed(3)+'/gal';
 }
 boot();
