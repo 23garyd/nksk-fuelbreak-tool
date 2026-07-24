@@ -150,6 +150,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
         <option value="perha">Cost intensity ($/ha)</option>
         <option value="cwd">Aridity (CWD)</option>
         <option value="water">Water demand (gal)</option>
+        <option value="drp2">Drought P (Yr 2)</option>
         <option value="plants">Plants required</option>
         <option value="elev">Elevation class</option>
       </select>
@@ -157,11 +158,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
     <div class="blk">
       <h2>Drought scenario</h2>
       <div class="seg" id="drought">
-        <button data-d="exp" class="on">Expected<small>P .28 / .10</small></button>
-        <button data-d="dry">Dry decade<small>P .45 / .20</small></button>
-        <button data-d="worst">Worst<small>P .65 / .35</small></button>
+        <button data-d="exp" class="on">Expected<small>per-segment</small></button>
+        <button data-d="dry">Dry decade<small>×1.6 / ×2.0</small></button>
+        <button data-d="worst">Worst<small>×2.3 / ×3.5</small></button>
       </div>
-      <div class="hint">Scales the chance Year-2 / Year-3 contingency irrigation is triggered.</div>
+      <div class="hint">Each segment's Year-2 / Year-3 drought-trigger probability now comes from HCDP wet-season rainfall (P25 / P10), so <b>Expected</b> varies across the network (Yr2 ≈ .21–.29). <b>Dry decade</b> and <b>Worst</b> scale each segment's own probability up (capped at 1) to stress-test a drier climate.</div>
     </div>
     <div class="blk">
       <h2>Water delivery <span class="rd" id="delivv">$0.299/gal</span></h2>
@@ -252,7 +253,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 // Static map context (small, not a notebook product). Real data loads in boot().
 const DB={"nksk":[[20.3,-155.34],[20.28,-155.9],[19.6,-156.12],[19.58,-155.34],[20.3,-155.34]],"towns":[["Kawaihae",20.033,-155.829],["Waimea",20.02,-155.668],["Waikoloa Village",19.938,-155.789],["Kailua-Kona",19.639,-155.997],["Hawi",20.241,-155.833]]};
 let SEG=[], GRIDS_META={}, MOISTURE=null, NKSK_BND=null, SPDB={};
-const DV='?v=3';  // bump on each data redeploy to bust browser/CDN cache
+const DV='?v=4';  // bump on each data redeploy to bust browser/CDN cache
 const INFL=1.332,DISC=0.02,CREW_RATE=45,TRUCK_GAL=6000;
 const PV1=[1,2,3].reduce((s,t)=>s+1/Math.pow(1+DISC,t),0);
 const WATER_C=0.0076,TRUCK_C=250/6000,CWD_MIN=651,CWD_MAX=5608;
@@ -267,7 +268,19 @@ function spNorm(x){return (x||'').toString().trim().toLowerCase().replace(/[ʻ'�
 function spInfo(name){return SPDB[spNorm(name)]||{name:name||'',sci:'',cost:12};}
 function spCost(name){return spInfo(name).cost;}
 function segSp(s,ch){const c=CH[ch];return (s&&s.sp&&s.sp[ch])||[c.L[0],c.M[0],c.H[0]];}  // [Low,Med,High]
-const DSCEN={exp:[.28,.10],dry:[.45,.20],worst:[.65,.35]};
+// Drought is now a PER-SEGMENT probability (seg.p2 = P(wet season<25th pctile),
+// seg.p3 = P<10th pctile), computed from HCDP rainfall in the pipeline (Cell 5b).
+// "Expected" uses each segment's own probability; "Dry"/"Worst" scale it up,
+// keeping the multipliers implied by the old district scalars (.28/.10 baseline):
+//   dry  = .45/.20  -> x1.61 / x2.0 ;  worst = .65/.35 -> x2.32 / x3.5
+// Products are clamped to <=1 (a probability can't exceed certainty).
+const DMULT={exp:[1,1],dry:[1.61,2.0],worst:[2.32,3.5]};
+const DFALLBACK=[.28,.10];  // district-wide fallback for segments lacking HCDP coverage
+function segDroughtP(s){
+  const p2=(s&&s.p2!=null)?s.p2:DFALLBACK[0], p3=(s&&s.p3!=null)?s.p3:DFALLBACK[1];
+  const [m2,m3]=DMULT[state.drought];
+  return [Math.min(1,p2*m2), Math.min(1,p3*m3)];
+}
 const CORR_ORDER=['QUEEN KAAHUMANU','AKONI PULE','KAWAIHAE','WAIKOLOA','MAMALAHOA','DANIEL K INOUYE','SADDLE','HAWAII BELT','KOHALA MOUNTAIN'];
 const ELEV_COL={low:'#bfb9a6',high:'#2f5d4f'};
 const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'plain',
@@ -278,7 +291,7 @@ function deliv(){return WATER_C+TRUCK_C+laborPG()}
 function compute(s){
   const L=s.length_m,cwd=s.cwd_mm,elev=s.elev,area=L*60/1e4,fcwd=cwd/1650;
   const dens=2000-(2000-1000)*(cwd-CWD_MIN)/(CWD_MAX-CWD_MIN),npl=dens*area,perim=2*(L+60);
-  const [p2,p3]=DSCEN[state.drought];
+  const [p2,p3]=segDroughtP(s);
   const g1=52*.5*fcwd*npl,g2b=52*.5*fcwd*.2*npl,g2a=p2*26*.5*fcwd*.8*npl,g3=p3*13*.25*fcwd*.96*npl;
   const gal=g1+g2b+g2a+g3,dv=deliv(),water=gal*dv;
   const _sp=segSp(s,state.choice),_cs=_sp.filter(Boolean).map(spCost),
@@ -303,6 +316,7 @@ const METRICS={
   perha:{lbl:'Cost / ha',fmt:v=>'$'+kf(v),val:c=>c.tot/c.area},
   cwd:{lbl:'CWD mm/yr',fmt:v=>Math.round(v),val:(c,s)=>s.cwd_mm},
   water:{lbl:'Water gal',fmt:v=>kf(v),val:c=>c.gal},
+  drp2:{lbl:'Drought P Yr2',fmt:v=>(v*100).toFixed(0)+'%',val:(c,s)=>segDroughtP(s)[0]},
   plants:{lbl:'Plants',fmt:v=>kf(v),val:c=>c.npl},
   elev:{lbl:'Elevation',cat:true}};
 function kf(v){v=Math.round(v);if(v>=1e6)return(v/1e6).toFixed(v>=1e7?0:1)+'M';if(v>=1e3)return(v/1e3).toFixed(v>=1e4?0:1)+'k';return''+v}
@@ -523,6 +537,7 @@ async function boot(){
     const gj=await (await fetch('data/segments.geojson'+DV)).json();
     SEG=gj.features.map((f,i)=>{const c=f.geometry.coordinates,p=f.properties;return{
       id:p.id??i,road:p.road,elev:p.elev,length_m:p.length_m,cwd_mm:p.cwd_mm,excl:p.excl?1:0,
+      p2:(p.p2!=null?p.p2:null),p3:(p.p3!=null?p.p3:null),
       a:p.a||[c[0][1],c[0][0]],b:p.b||[c[c.length-1][1],c[c.length-1][0]],
       line:c.map(x=>[x[1],x[0]]),sp:p.sp||null};});
     try{SPDB=await (await fetch('data/species_costs.json'+DV)).json();}catch(e){}

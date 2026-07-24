@@ -20,10 +20,35 @@ figures as provisional and use the throughput slider to test sensitivity.
 Segments over young lava (age groups flagged in the pipeline) are shown greyed/dotted and
 can be excluded from totals with the "exclude young lava" toggle.
 
+### Drought-trigger probability (per segment)
+
+The chance that Year-2 and Year-3 contingency irrigation is triggered is now a **per-segment
+probability** derived from Hawaiʻi Climate Data Portal (HCDP) wet-season (Nov–Apr) rainfall,
+not a single district-wide constant. For each segment, `p2` is the share of recent water
+years (2000–2023) whose wet-season rainfall fell below that segment's own 25th-percentile
+baseline (1990–2023), and `p3` is the same against the 10th percentile. Across the network
+`p2` runs roughly .21–.29 (mean ≈ .26) and `p3` runs .125–.167 (mean ≈ .14). The 45
+young-lava / uncovered segments fall back to the old district scalars (.28 / .10).
+
+The **Drought scenario** control uses these directly: **Expected** applies each segment's own
+HCDP probability, while **Dry decade** (×1.6 / ×2.0) and **Worst** (×2.3 / ×3.5) scale each
+segment's probability up — capped at 1 — to stress-test a drier climate. The multipliers are
+chosen so the network peaks land near the old district "dry" (.45 / .20) and "worst"
+(.65 / .35) values, preserving the original scenario calibration while adding spatial detail.
+Segment drought probabilities come from the pipeline's `NKSK_drought_probabilities.csv`
+(notebook Cell 5b) and are carried into `data/segments.geojson` as `p2` / `p3`.
+
+### Naupaka distribution
+
+Scaevola taccada (naupaka kahakai) now uses the **NRCS climatic-elevation envelope**
+(coastal, elevation ≤ 150 m, rainfall 200–6300 mm) rather than the Price occurrence polygon.
+This makes naupaka the recommended mid-tier species along many more coastal segments; the
+per-segment species assignments in `data/segments.geojson` reflect this automatically.
+
 ## Map layers
 
 - **Road segments** — 280 candidate segments, colored by the selected metric (total cost,
-  cost/ha, CWD, water, plants, or elevation class).
+  cost/ha, CWD, water, drought probability, plants, or elevation class).
 - **Raster overlays** — Climatic Water Deficit (CWD), Elevation (DEM), Potential ET
   (Penman annual), Actual ET (annual).
 - **Moisture zones** — categorical polygon layer (Arid → Very Wet).

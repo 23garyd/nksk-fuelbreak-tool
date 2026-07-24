@@ -49,6 +49,26 @@ with open(src("outputs", "road_segments_young_lava_exclusion.csv")) as f:
     for row in csv.DictReader(f):
         excl_map[row["seg_id"]] = 1 if str(row["exclude"]).strip().lower() == "true" else 0
 
+# per-segment drought-trigger probabilities from HCDP (Cell 5b), joined by seg_id.
+# p2 = P(wet season < 25th pctile) -> Year-2 contingency irrigation trigger
+# p3 = P(wet season < 10th pctile) -> Year-3 severe-drought trigger
+# Young-lava / uncovered segments aren't in this table; the tool falls back to
+# the district-wide scalars (0.28 / 0.10) for them, matching the pipeline.
+DROUGHT_FALLBACK = (0.28, 0.10)
+drought_map = {}
+_drought_csv = src("outputs", "NKSK_drought_probabilities.csv")
+if os.path.exists(_drought_csv):
+    with open(_drought_csv) as f:
+        for row in csv.DictReader(f):
+            try:
+                drought_map[row["seg_id"]] = (round(float(row["p_drought_yr2"]), 4),
+                                              round(float(row["p_drought_yr3"]), 4))
+            except (KeyError, ValueError):
+                pass
+else:
+    print("WARNING: NKSK_drought_probabilities.csv not found — "
+          "all segments will use the district-wide drought fallback.")
+
 # elevation class from the DEM, sampled at each segment midpoint
 dem_path = src("inputs", "hawaii_dem")
 with rasterio.open(dem_path) as dem:
@@ -130,6 +150,10 @@ for i, (_, r) in enumerate(seg.iterrows()):
             "length_m": round(float(r["length_m"]), 1),
             "cwd_mm": round(float(cwd_val), 1),
             "excl": excl_map.get(sid_raw, 0),
+            # per-segment drought-trigger probabilities (Yr2 P25, Yr3 P10);
+            # district-wide fallback where the segment lacks HCDP coverage
+            "p2": drought_map.get(sid_raw, DROUGHT_FALLBACK)[0],
+            "p3": drought_map.get(sid_raw, DROUGHT_FALLBACK)[1],
             "a": latlon[0],
             "b": latlon[-1],
             # real per-segment species by choice tier -> [Low, Med, High]
@@ -138,9 +162,12 @@ for i, (_, r) in enumerate(seg.iterrows()):
     })
 json.dump({"type": "FeatureCollection", "features": feats},
           open(out("segments.geojson"), "w"), ensure_ascii=False)
+_p2 = [f["properties"]["p2"] for f in feats]
 print(f"segments.geojson: {len(feats)} segments  "
       f"(high={sum(f['properties']['elev']=='high' for f in feats)}, "
-      f"excl={sum(f['properties']['excl'] for f in feats)})")
+      f"excl={sum(f['properties']['excl'] for f in feats)}, "
+      f"drought-covered={len(drought_map)}, "
+      f"p2 {min(_p2):.3f}-{max(_p2):.3f})")
 
 # species_costs.json: normalized-name -> {name, sci, cost} for every species used
 _used = set()
