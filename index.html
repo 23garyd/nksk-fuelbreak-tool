@@ -99,9 +99,15 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 .bar .bv{width:50px;text-align:right;font-family:"IBM Plex Mono";font-size:10px;flex:0 0 auto}
 .dnull{font-size:12px;color:var(--muted);line-height:1.5}
 .segpop .leaflet-popup-content-wrapper{border-radius:5px;box-shadow:0 4px 18px rgba(0,0,0,.28);border:1px solid var(--line2);padding:0}
-.segpop .leaflet-popup-content{margin:13px 15px;font-family:"Barlow",system-ui,sans-serif;color:var(--ink);font-size:14px;width:auto!important}
+.segpop .leaflet-popup-content{margin:14px 16px;font-family:"Barlow",system-ui,sans-serif;color:var(--ink);font-size:14px;width:420px!important}
 .segpop .leaflet-popup-tip{box-shadow:0 4px 18px rgba(0,0,0,.28)}
-.segpop .segpopbody{max-height:60vh;overflow-y:auto}
+.segpop .segpopbody{max-height:66vh;overflow-y:auto}
+.segpop .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-top:9px}
+.segpop .dcol{min-width:0}
+.segpop .dhd{font-family:"Barlow Condensed";font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.segpop .dcol .kv:first-of-type,.segpop .dcol .spec:first-of-type{margin-top:0}
+.segpop .dcol .dhd:not(:first-child){margin-top:11px}
+.segpop .bar .bn{width:84px}
 .segpop .leaflet-popup-close-button{color:var(--muted);font-size:20px;padding:6px 8px 0 0}
 .leaflet-tooltip.tip{background:var(--ink);color:#f1f0e9;border:0;border-radius:3px;font-family:"IBM Plex Mono";font-size:10.5px;padding:4px 7px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .leaflet-tooltip.tip::before{display:none}
@@ -445,23 +451,30 @@ function detailHTML(s){
   const mx=Math.max(...comp.map(x=>x[1]));
   return `<div class="dtitle">${titleCase(s.road)} <span class="pill ${s.excl?'excl':s.elev}">${s.excl?'young lava':s.elev+' elev'}</span></div>
     <div class="dsub">Segment ${s.id} · ${(s.length_m/1000).toFixed(2)} km · ${c.area.toFixed(1)} ha treated</div>
-    <div class="kv"><span class="k">Aridity (CWD)</span><span class="v">${Math.round(s.cwd_mm)} mm/yr</span></div>
-    <div class="kv"><span class="k">Density</span><span class="v">${Math.round(c.dens)} /ha</span></div>
-    <div class="kv"><span class="k">Seedlings</span><span class="v">${Math.round(c.npl).toLocaleString()}</span></div>
-    <div class="kv"><span class="k">Water (3-yr)</span><span class="v">${Math.round(c.gal).toLocaleString()} gal</span></div>
-    <div class="kv"><span class="k">Tanker loads</span><span class="v">${Math.round(c.gal/TRUCK_GAL)}</span></div>
-    <div class="kv"><span class="k">Total cost</span><span class="v">${money(c.tot)}</span></div>
-    <div style="font-family:'Barlow Condensed';font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:11px 0 2px">Species (rank ${state.choice})</div>
-    <div class="spec"><span class="sn">High · ${dsp[2]||'—'} <em>${dH.sci}</em></span></div>
-    <div class="spec"><span class="sn">Med · ${dsp[1]||'—'} <em>${dM.sci}</em></span></div>
-    <div class="spec"><span class="sn">Low · ${dsp[0]||'—'} <em>${dL.sci}</em></span></div>
-    <div class="bars">${comp.map(([n,v])=>`<div class="bar"><span class="bn">${n}</span><span class="bt"><span class="bf" style="width:${v/mx*100}%"></span></span><span class="bv">${money(v)}</span></div>`).join('')}</div>
+    <div class="dgrid">
+      <div class="dcol">
+        <div class="kv"><span class="k">Aridity (CWD)</span><span class="v">${Math.round(s.cwd_mm)} mm/yr</span></div>
+        <div class="kv"><span class="k">Density</span><span class="v">${Math.round(c.dens)} /ha</span></div>
+        <div class="kv"><span class="k">Seedlings</span><span class="v">${Math.round(c.npl).toLocaleString()}</span></div>
+        <div class="kv"><span class="k">Water (3-yr)</span><span class="v">${Math.round(c.gal).toLocaleString()} gal</span></div>
+        <div class="kv"><span class="k">Tanker loads</span><span class="v">${Math.round(c.gal/TRUCK_GAL)}</span></div>
+        <div class="kv"><span class="k">Total cost</span><span class="v">${money(c.tot)}</span></div>
+        <div class="dhd">Species (rank ${state.choice})</div>
+        <div class="spec"><span class="sn">High · ${dsp[2]||'—'} <em>${dH.sci}</em></span></div>
+        <div class="spec"><span class="sn">Med · ${dsp[1]||'—'} <em>${dM.sci}</em></span></div>
+        <div class="spec"><span class="sn">Low · ${dsp[0]||'—'} <em>${dL.sci}</em></span></div>
+      </div>
+      <div class="dcol">
+        <div class="dhd">Cost breakdown</div>
+        <div class="bars">${comp.map(([n,v])=>`<div class="bar"><span class="bn">${n}</span><span class="bt"><span class="bf" style="width:${v/mx*100}%"></span></span><span class="bv">${money(v)}</span></div>`).join('')}</div>
+      </div>
+    </div>
     <button class="addbtn ${inPlan?'rm':''}" onclick="togglePlan(${s.id})">${inPlan?'Remove from plan':'Add to plan'}</button>`;
 }
 let segPopup=null;
 function openSegPopup(s,latlng){
   const ll=latlng||L.latLng(s.line[Math.floor(s.line.length/2)]);
-  segPopup=L.popup({className:'segpop',maxWidth:300,minWidth:250,autoPan:true,autoPanPadding:[24,24],closeButton:true})
+  segPopup=L.popup({className:'segpop',maxWidth:480,minWidth:440,autoPan:true,autoPanPadding:[24,24],closeButton:true})
     .setLatLng(ll).setContent('<div class="segpopbody">'+detailHTML(s)+'</div>').openOn(map);
   map.once('popupclose',ev=>{if(ev.popup===segPopup){segPopup=null;if(state.sel===s.id){state.sel=null;drawSegments();}}});
 }
