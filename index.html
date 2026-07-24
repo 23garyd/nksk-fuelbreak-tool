@@ -426,12 +426,17 @@ function renderReadout(){
 function renderLedger(){
   const A=activeSegs().map(s=>({s,c:compute(s)}));let gal=0,fenceM=0,tot=0,npl=0;
   A.forEach(({c})=>{gal+=c.gal;fenceM+=c.fenceM;tot+=c.tot;npl+=c.npl;});
-  const per=npl/3;
-  // species now vary by segment; show the most common per height across active segments
-  const _segs=A.map(x=>x.s);
-  const modeSp=idx=>{const cnt={};_segs.forEach(s=>{const nm=segSp(s,state.choice)[idx];if(nm)cnt[nm]=(cnt[nm]||0)+1;});
-    let best='',bc=-1;for(const k in cnt){if(cnt[k]>bc){bc=cnt[k];best=k;}}return best;};
-  const mL=modeSp(0),mM=modeSp(1),mH=modeSp(2);
+  // Full species breakdown: each segment plants a Low/Med/High species and splits
+  // its seedlings evenly across the three tiers (matching the cost model, which
+  // averages the three tier prices). Accumulate real per-species totals across all
+  // active segments, so every species actually used shows up — not just one per tier.
+  const tally={};  // name -> {tier:{L,M,H}, plants}
+  const TIERS=['Low','Med','High'];
+  A.forEach(({s,c})=>{const sp=segSp(s,state.choice),third=c.npl/3;
+    sp.forEach((nm,idx)=>{if(!nm)return;
+      const e=tally[nm]||(tally[nm]={name:nm,plants:0,tiers:new Set()});
+      e.plants+=third;e.tiers.add(TIERS[idx]);});});
+  const specs=Object.values(tally).sort((a,b)=>b.plants-a.plants);
   document.getElementById('plants').textContent=Math.round(npl).toLocaleString();
   document.getElementById('gal').textContent=Math.round(gal).toLocaleString()+' gal';
   document.getElementById('loads').textContent=Math.round(gal/TRUCK_GAL).toLocaleString();
@@ -439,9 +444,11 @@ function renderLedger(){
   document.getElementById('crewsub').textContent='at '+state.through+' gal/hr';
   document.getElementById('fencem').textContent=Math.round(fenceM).toLocaleString()+' m';
   document.getElementById('ledtot').textContent=money(tot);
-  document.getElementById('plantsub').textContent=`${mL||'—'} · ${mM||'—'} · ${mH||'—'}`;
-  document.getElementById('speclist').innerHTML=[mH,mM,mL].map(nm=>{const i=spInfo(nm);
-    return `<div class="spec"><span class="sn">${nm||'—'} <em>${i.sci?'· '+i.sci:''}</em></span><span class="sq">${nm?Math.round(per).toLocaleString()+' · $'+i.cost+'/ea':'no suitable species'}</span></div>`;}).join('');
+  document.getElementById('plantsub').textContent=specs.length?`${specs.length} species across active segments`:'';
+  document.getElementById('speclist').innerHTML=specs.length?specs.map(e=>{const i=spInfo(e.name);
+    const tierLbl=TIERS.filter(t=>e.tiers.has(t)).join('/');
+    return `<div class="spec"><span class="sn">${e.name} <em>${i.sci?'· '+i.sci:''}${tierLbl?' · '+tierLbl:''}</em></span><span class="sq">${Math.round(e.plants).toLocaleString()} · $${i.cost}/ea</span></div>`;}).join('')
+    :'<div class="spec"><span class="sn">—</span><span class="sq">no suitable species</span></div>';
 }
 function detailHTML(s){
   const c=compute(s),inPlan=state.plan.has(s.id);
