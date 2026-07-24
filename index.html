@@ -20,8 +20,9 @@ body{font-family:"Barlow",system-ui,sans-serif;color:var(--ink);background:var(-
 h1,h2,h3,.cond{font-family:"Barlow Condensed",sans-serif}
 header{background:var(--ink);color:#f1f0e9;padding:11px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 header h1{font-weight:700;font-size:21px;letter-spacing:.03em;margin:0;text-transform:uppercase}
-header .sub{color:#a9a89d;font-size:12.5px;max-width:560px;line-height:1.35}
-.tag{font-family:"Barlow Condensed";font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;border:1px solid #6b6f62;color:#c9c8bd;padding:2px 8px;border-radius:2px;margin-left:auto}
+.byline{margin-left:auto;text-align:right;display:flex;flex-direction:column;line-height:1.35}
+.byline span:first-child{font-family:"Barlow Condensed";font-weight:600;font-size:13px;letter-spacing:.04em;color:#f1f0e9}
+.byline span:last-child{font-size:11px;color:#a9a89d;font-family:"IBM Plex Mono";letter-spacing:.01em}
 .shell{display:grid;grid-template-columns:300px 1fr 336px;flex:1;min-height:0}
 .rail,.side{overflow-y:auto;background:var(--bg)}
 .rail{border-right:1px solid var(--line2)}.side{border-left:1px solid var(--line2)}
@@ -97,6 +98,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 .bar .bf{display:block;height:100%;background:var(--accent2)}
 .bar .bv{width:50px;text-align:right;font-family:"IBM Plex Mono";font-size:10px;flex:0 0 auto}
 .dnull{font-size:12px;color:var(--muted);line-height:1.5}
+.segpop .leaflet-popup-content-wrapper{border-radius:5px;box-shadow:0 4px 18px rgba(0,0,0,.28);border:1px solid var(--line2);padding:0}
+.segpop .leaflet-popup-content{margin:13px 15px;font-family:"Barlow",system-ui,sans-serif;color:var(--ink);font-size:14px;width:auto!important}
+.segpop .leaflet-popup-tip{box-shadow:0 4px 18px rgba(0,0,0,.28)}
+.segpop .segpopbody{max-height:60vh;overflow-y:auto}
+.segpop .leaflet-popup-close-button{color:var(--muted);font-size:20px;padding:6px 8px 0 0}
 .leaflet-tooltip.tip{background:var(--ink);color:#f1f0e9;border:0;border-radius:3px;font-family:"IBM Plex Mono";font-size:10.5px;padding:4px 7px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .leaflet-tooltip.tip::before{display:none}
 .townmark{color:var(--ink);font-family:"Barlow Condensed";font-weight:700;font-size:11px;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
@@ -105,9 +111,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 </head>
 <body>
 <header>
-  <h1>NKSK Green Fuel Break</h1>
-  <span class="sub">Plan native dryland fuel breaks along North Kona–South Kohala road corridors (species, water, labor, and cost) to build and hold them for three years.</span>
-  <span class="tag">Prototype</span>
+  <h1>North Kona &amp; South Kohala Green Fuel Break Planner</h1>
+  <div class="byline">
+    <span>Gary Ding</span>
+    <span id="updated">Last updated Jul 24, 2026</span>
+  </div>
 </header>
 <div class="shell">
   <div class="rail">
@@ -147,22 +155,12 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       <h2>Color roads by</h2>
       <select id="metric">
         <option value="tot">Total 3-yr cost ($/segment)</option>
-        <option value="perha">Cost intensity ($/ha)</option>
-        <option value="cwd">Aridity (CWD)</option>
-        <option value="water">Water demand (gal)</option>
+        <option value="impl">Implementation cost ($)</option>
+        <option value="maint">Maintenance cost ($)</option>
+        <option value="water">3-yr water cost ($)</option>
         <option value="drp2">Drought P (Yr 2)</option>
-        <option value="plants">Plants required</option>
-        <option value="elev">Elevation class</option>
+        <option value="drp3">Drought P (Yr 3)</option>
       </select>
-    </div>
-    <div class="blk">
-      <h2>Drought scenario</h2>
-      <div class="seg" id="drought">
-        <button data-d="exp" class="on">Expected<small>per-segment</small></button>
-        <button data-d="dry">Dry decade<small>×1.6 / ×2.0</small></button>
-        <button data-d="worst">Worst<small>×2.3 / ×3.5</small></button>
-      </div>
-      <div class="hint">Each segment's Year-2 / Year-3 drought-trigger probability now comes from HCDP wet-season rainfall (P25 / P10), so <b>Expected</b> varies across the network (Yr2 ≈ .21–.29). <b>Dry decade</b> and <b>Worst</b> scale each segment's own probability up (capped at 1) to stress-test a drier climate.</div>
     </div>
     <div class="blk">
       <h2>Water delivery <span class="rd" id="delivv">$0.299/gal</span></h2>
@@ -171,9 +169,12 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       <div class="hint flag">Field labor drives ~80% of delivered water cost — the model's most sensitive input. Validate throughput against WDFI records.</div>
     </div>
     <div class="blk">
-      <h2>Fence coverage <span class="rd" id="fencev">50%</span></h2>
-      <input type="range" id="fence" min="0" max="100" step="5" value="50">
-      <div class="rl"><span>road only</span><span>full perimeter</span></div>
+      <h2>Fence coverage</h2>
+      <div class="seg" id="fence">
+        <button data-f="0">None<small>0%</small></button>
+        <button data-f="50" class="on">Half<small>50%</small></button>
+        <button data-f="100">All<small>100%</small></button>
+      </div>
     </div>
     <div class="blk">
       <h2>Budget &amp; phasing</h2>
@@ -242,10 +243,6 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       </div>
       <button class="btn pri" id="export" style="margin-top:11px">Export plan as CSV</button>
     </div>
-    <div class="card" id="detail">
-      <h2>Segment detail</h2>
-      <div class="dnull">Click a road segment to inspect species, cost breakdown, and water demand — then add it to your plan.</div>
-    </div>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -283,7 +280,7 @@ function segDroughtP(s){
 }
 const CORR_ORDER=['QUEEN KAAHUMANU','AKONI PULE','KAWAIHAE','WAIKOLOA','MAMALAHOA','DANIEL K INOUYE','SADDLE','HAWAII BELT','KOHALA MOUNTAIN'];
 const ELEV_COL={low:'#bfb9a6',high:'#2f5d4f'};
-const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'plain',
+const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'plain', /* drought fixed to expected (per-segment HCDP) */
   overlay:'none',opacity:.55,scope:'net',excl:true,corr:new Set(CORR_ORDER),plan:new Set(),sel:null};
 
 function laborPG(){return CREW_RATE/state.through}
@@ -312,13 +309,12 @@ function roadRamp(t){return hx(mix(ROAD_A,ROAD_B,Math.max(0,Math.min(1,t))))}
 const SCHEMES={amber:[[242,234,217],[138,90,30]],teal:[[226,238,236],[29,90,86]],terrain:[[243,242,238],[74,70,61]]};
 function schemeRamp(sc,t){const[a,b]=SCHEMES[sc];return mix(a,b,Math.max(0,Math.min(1,t)))}
 const METRICS={
-  tot:{lbl:'Total cost',fmt:v=>'$'+kf(v),val:c=>c.tot},
-  perha:{lbl:'Cost / ha',fmt:v=>'$'+kf(v),val:c=>c.tot/c.area},
-  cwd:{lbl:'CWD mm/yr',fmt:v=>Math.round(v),val:(c,s)=>s.cwd_mm},
-  water:{lbl:'Water gal',fmt:v=>kf(v),val:c=>c.gal},
+  tot:{lbl:'Total 3-yr cost',fmt:v=>'$'+kf(v),val:c=>c.tot},
+  impl:{lbl:'Implementation cost',fmt:v=>'$'+kf(v),val:c=>c.impl_t},
+  maint:{lbl:'Maintenance cost',fmt:v=>'$'+kf(v),val:c=>c.maint_t},
+  water:{lbl:'3-yr water cost',fmt:v=>'$'+kf(v),val:c=>c.water},
   drp2:{lbl:'Drought P Yr2',fmt:v=>(v*100).toFixed(0)+'%',val:(c,s)=>segDroughtP(s)[0]},
-  plants:{lbl:'Plants',fmt:v=>kf(v),val:c=>c.npl},
-  elev:{lbl:'Elevation',cat:true}};
+  drp3:{lbl:'Drought P Yr3',fmt:v=>(v*100).toFixed(0)+'%',val:(c,s)=>segDroughtP(s)[1]}};
 function kf(v){v=Math.round(v);if(v>=1e6)return(v/1e6).toFixed(v>=1e7?0:1)+'M';if(v>=1e3)return(v/1e3).toFixed(v>=1e4?0:1)+'k';return''+v}
 function money(v){return'$'+Math.round(v).toLocaleString('en-US')}
 function titleCase(r){return r.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ')}
@@ -394,7 +390,7 @@ function drawSegments(){
       dashArray:greyed?'2 5':null,lineCap:'round'});
     line.bindTooltip(`${titleCase(s.road)} · seg ${s.id}${s.excl?' · young lava':''}<br>`+
       (M.cat?(s.elev+' elev'):`${M.lbl}: ${M.fmt(M.val(c,s))}`),{className:'tip',sticky:true});
-    line.on('click',()=>{state.sel=s.id;drawSegments();renderDetail();});
+    line.on('click',e=>{state.sel=s.id;const ll=e.latlng;drawSegments();openSegPopup(s,ll);});
     line.addTo(map);layerById[s.id]=line;
   });
   drawLegend(lo,hi);
@@ -441,15 +437,13 @@ function renderLedger(){
   document.getElementById('speclist').innerHTML=[mH,mM,mL].map(nm=>{const i=spInfo(nm);
     return `<div class="spec"><span class="sn">${nm||'—'} <em>${i.sci?'· '+i.sci:''}</em></span><span class="sq">${nm?Math.round(per).toLocaleString()+' · $'+i.cost+'/ea':'no suitable species'}</span></div>`;}).join('');
 }
-function renderDetail(){
-  const el=document.getElementById('detail');
-  if(state.sel==null){el.innerHTML='<h2>Segment detail</h2><div class="dnull">Click a road segment to inspect species, cost breakdown, and water demand — then add it to your plan.</div>';return;}
-  const s=SEG.find(x=>x.id===state.sel),c=compute(s),inPlan=state.plan.has(s.id);
+function detailHTML(s){
+  const c=compute(s),inPlan=state.plan.has(s.id);
   const dsp=segSp(s,state.choice),dL=spInfo(dsp[0]),dM=spInfo(dsp[1]),dH=spInfo(dsp[2]);
   const comp=[['Plant material',c.impl.plant],['Outplant labor',c.impl.olab],['Site prep',c.impl.site],
     ['Fencing',c.impl.fence],['Irrigation 3yr',c.maint.irrig],['Weed/other',c.impl.ung+c.maint.weed+c.maint.ung+c.maint.fence+c.maint.fire]];
   const mx=Math.max(...comp.map(x=>x[1]));
-  el.innerHTML=`<div class="dtitle">${titleCase(s.road)} <span class="pill ${s.excl?'excl':s.elev}">${s.excl?'young lava':s.elev+' elev'}</span></div>
+  return `<div class="dtitle">${titleCase(s.road)} <span class="pill ${s.excl?'excl':s.elev}">${s.excl?'young lava':s.elev+' elev'}</span></div>
     <div class="dsub">Segment ${s.id} · ${(s.length_m/1000).toFixed(2)} km · ${c.area.toFixed(1)} ha treated</div>
     <div class="kv"><span class="k">Aridity (CWD)</span><span class="v">${Math.round(s.cwd_mm)} mm/yr</span></div>
     <div class="kv"><span class="k">Density</span><span class="v">${Math.round(c.dens)} /ha</span></div>
@@ -463,6 +457,21 @@ function renderDetail(){
     <div class="spec"><span class="sn">Low · ${dsp[0]||'—'} <em>${dL.sci}</em></span></div>
     <div class="bars">${comp.map(([n,v])=>`<div class="bar"><span class="bn">${n}</span><span class="bt"><span class="bf" style="width:${v/mx*100}%"></span></span><span class="bv">${money(v)}</span></div>`).join('')}</div>
     <button class="addbtn ${inPlan?'rm':''}" onclick="togglePlan(${s.id})">${inPlan?'Remove from plan':'Add to plan'}</button>`;
+}
+let segPopup=null;
+function openSegPopup(s,latlng){
+  const ll=latlng||L.latLng(s.line[Math.floor(s.line.length/2)]);
+  segPopup=L.popup({className:'segpop',maxWidth:300,minWidth:250,autoPan:true,autoPanPadding:[24,24],closeButton:true})
+    .setLatLng(ll).setContent('<div class="segpopbody">'+detailHTML(s)+'</div>').openOn(map);
+  map.once('popupclose',ev=>{if(ev.popup===segPopup){segPopup=null;if(state.sel===s.id){state.sel=null;drawSegments();}}});
+}
+// Segment detail is shown as a map popup next to the clicked segment.
+// This refreshes the popup content in place when inputs change (species/choice/plan/etc).
+function renderDetail(){
+  if(segPopup&&state.sel!=null){
+    const s=SEG.find(x=>x.id===state.sel);
+    if(s)segPopup.setContent('<div class="segpopbody">'+detailHTML(s)+'</div>');
+  }
 }
 window.togglePlan=function(id){state.plan.has(id)?state.plan.delete(id):state.plan.add(id);drawSegments();renderAll();syncHash();};
 function buildCorr(){
@@ -493,29 +502,29 @@ function syncHash(){
 function loadHash(){
   if(!location.hash)return;
   try{const o=JSON.parse(decodeURIComponent(location.hash.slice(1)));
-    state.choice=o.c;state.metric=o.m;state.through=o.t;state.fence=o.f;state.drought=o.d;state.basemap=o.b;
+    state.choice=o.c;state.metric=o.m;state.through=o.t;state.fence=o.f;state.basemap=o.b;
     state.overlay=o.o;state.opacity=o.op;state.excl=!!o.x;state.scope=o.sc;
+    if(!METRICS[state.metric])state.metric='tot';
+    state.fence=[0,.5,1].reduce((p,v)=>Math.abs(v-state.fence)<Math.abs(p-state.fence)?v:p,.5);
     state.corr=new Set((o.cr||[]).map(i=>CORR_ORDER[i]));state.plan=new Set(o.pl||[]);
     document.querySelectorAll('#choice button').forEach(x=>x.classList.toggle('on',+x.dataset.c===state.choice));
-    document.querySelectorAll('#drought button').forEach(x=>x.classList.toggle('on',x.dataset.d===state.drought));
     document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x.dataset.s===state.scope));
     document.getElementById('metric').value=state.metric;document.getElementById('basemap').value=state.basemap;
     document.getElementById('overlay').value=state.overlay;
     document.getElementById('through').value=state.through;document.getElementById('throughv').textContent=state.through;
-    document.getElementById('fence').value=state.fence*100;document.getElementById('fencev').textContent=(state.fence*100)+'%';
+    document.querySelectorAll('#fence button').forEach(x=>x.classList.toggle('on',+x.dataset.f===Math.round(state.fence*100)));
     document.getElementById('opacity').value=state.opacity*100;document.getElementById('opv').textContent=(state.opacity*100)+'%';
     document.getElementById('exclchk').checked=state.excl;
   }catch(e){}
 }
 const $=id=>document.getElementById(id);
 $('choice').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.choice=+b.dataset.c;document.querySelectorAll('#choice button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
-$('drought').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.drought=b.dataset.d;document.querySelectorAll('#drought button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
 $('metric').addEventListener('change',e=>{state.metric=e.target.value;drawSegments();syncHash();});
 $('basemap').addEventListener('change',e=>{state.basemap=e.target.value;setBase();syncHash();});
 $('overlay').addEventListener('change',e=>{state.overlay=e.target.value;drawOverlay();syncHash();});
 $('opacity').addEventListener('input',e=>{state.opacity=+e.target.value/100;$('opv').textContent=e.target.value+'%';if(ovLayer)ovLayer.setOpacity(state.opacity);if(mzLayer)mzLayer.setStyle({fillOpacity:state.opacity});syncHash();});
 $('through').addEventListener('input',e=>{state.through=+e.target.value;$('throughv').textContent=state.through;$('delivv').textContent='$'+deliv().toFixed(3)+'/gal';drawSegments();renderAll();syncHash();});
-$('fence').addEventListener('input',e=>{state.fence=+e.target.value/100;$('fencev').textContent=e.target.value+'%';drawSegments();renderAll();syncHash();});
+$('fence').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.fence=+b.dataset.f/100;document.querySelectorAll('#fence button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
 $('scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.scope=b.dataset.s;document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x===b));drawSegments();renderAll();syncHash();});
 $('exclchk').addEventListener('change',e=>{state.excl=e.target.checked;drawSegments();renderAll();syncHash();});
 $('allon').addEventListener('click',()=>{state.corr=new Set(CORR_ORDER);buildCorr();drawSegments();renderAll();syncHash();});
