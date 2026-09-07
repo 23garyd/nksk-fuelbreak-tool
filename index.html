@@ -122,7 +122,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
   <h1>North Kona &amp; South Kohala Green Fuel Break Planner</h1>
   <div class="byline">
     <span>Gary Ding</span>
-    <span id="updated">Last updated Aug 4, 2026</span>
+    <span id="updated">Last updated Sep 7, 2026</span>
   </div>
 </header>
 <div class="shell">
@@ -596,6 +596,19 @@ async function boot(){
   $('delivv').textContent='$'+deliv().toFixed(3)+'/gal';
 }
 boot();
+/* Header date: read the deployed page's own Last-Modified header, so "Last
+   updated" tracks each push/redeploy automatically. The literal date in the
+   markup stays as the fallback (file:// opens, or a host that omits the
+   header). */
+(function stampUpdated(){
+  const el=$('updated');if(!el)return;
+  if(location.protocol==='file:')return;
+  fetch(location.pathname+'?t='+Date.now(),{method:'HEAD',cache:'no-store'}).then(r=>{
+    const lm=r.headers.get('Last-Modified');if(!lm)return;
+    const d=new Date(lm);if(isNaN(d))return;
+    el.textContent='Last updated '+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }).catch(()=>{});
+})();
 </script>
 </body>
 </html>
