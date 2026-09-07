@@ -76,7 +76,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
 .big{font-family:"IBM Plex Mono";font-weight:600;font-size:31px;letter-spacing:-.01em;color:var(--accent);line-height:1}
 .split{display:flex;height:9px;border-radius:2px;overflow:hidden;margin:11px 0 4px;border:1px solid var(--line2)}
 .split .i{background:var(--accent2)}.split .m{background:var(--tan)}
-.splitlab{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink2)}
+.splitlab{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px;font-size:12.5px;color:var(--ink2)}
+.splitlab .sd{flex:0 1 auto;min-width:0;display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.splitlab .sd.r{flex-direction:row-reverse;margin-left:auto}
+.splitlab .lb2{font-family:"Barlow Condensed";font-weight:600;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.splitlab .dot{color:var(--line2)}
 .splitlab b{font-family:"IBM Plex Mono";font-weight:600}
 .kv{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px dotted var(--line)}
 .kv:last-child{border-bottom:0}.kv .k{color:var(--ink2)}.kv .v{font-family:"IBM Plex Mono";font-weight:600}
@@ -227,8 +231,10 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       <div class="csub" id="scopelbl">Network</div>
       <div class="big" id="grand">$0</div>
       <div class="split"><div class="i" id="splitI"></div><div class="m" id="splitM"></div></div>
-      <div class="splitlab"><span>Build <b id="implpct">0%</b> · <b id="impl$">$0</b></span>
-        <span><b id="maint$">$0</b> · <b id="maintpct">0%</b> Maintain</span></div>
+      <div class="splitlab">
+        <span class="sd"><span class="lb2">Build</span><b id="implpct">0%</b><span class="dot">·</span><b id="impl$">$0</b></span>
+        <span class="sd r"><span class="lb2">Maintain</span><b id="maintpct">0%</b><span class="dot">·</span><b id="maint$">$0</b></span>
+      </div>
       <div style="margin-top:11px">
         <div class="kv"><span class="k">Treated area</span><span class="v" id="area">0 ha</span></div>
         <div class="kv"><span class="k">Corridor length</span><span class="v" id="len">0 km</span></div>
@@ -430,7 +436,7 @@ function renderReadout(){
   const ip=tot?impl/tot*100:0;
   document.getElementById('splitI').style.width=ip+'%';document.getElementById('splitM').style.width=(100-ip)+'%';
   document.getElementById('implpct').textContent=Math.round(ip)+'%';document.getElementById('maintpct').textContent=Math.round(100-ip)+'%';
-  document.getElementById('impl$').textContent=money(impl);document.getElementById('maint$').textContent=money(maint);
+  document.getElementById('impl$').textContent='$'+kf(impl);document.getElementById('maint$').textContent='$'+kf(maint);
   document.getElementById('area').textContent=area.toFixed(0)+' ha';document.getElementById('len').textContent=len.toFixed(1)+' km';
   document.getElementById('perhaR').textContent=area?money(tot/area)+'/ha':'—';
   document.getElementById('perkm').textContent=len?money(tot/len)+'/km':'—';
