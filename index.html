@@ -329,19 +329,30 @@ function titleCase(r){return r.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).
 const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([19.95,-155.73],10);
 L.control.zoom({position:'topright'}).addTo(map);
 const ATTRIB='Tiles &copy; Esri | Data: NKSK Green Fuel Break pipeline';
+/* All basemap + label tiles come from Esri ArcGIS Online (no key needed).
+   CARTO basemaps (basemaps.cartocdn.com) now require an API key and render an
+   "API KEY REQUIRED" watermark, so the plain/label layers were moved to Esri. */
+const AGO='https://server.arcgisonline.com/ArcGIS/rest/services/';
 const BASE={
- relief:'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
- topo:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
- sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
- plain:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'};
-let baseLayer=L.tileLayer(BASE.plain,{maxZoom:17,subdomains:'abcd',attribution:ATTRIB}).addTo(map);
-let refLabels=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',opacity:.9});
+ relief:AGO+'Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+ topo:AGO+'World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+ sat:AGO+'World_Imagery/MapServer/tile/{z}/{y}/{x}',
+ plain:AGO+'Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'};
+/* services whose deepest published level is 16 - upscale rather than fetch a
+   "map data not yet available" tile at z17 */
+const BASE_NATIVE={relief:16,plain:16};
+let baseLayer=L.tileLayer(BASE.plain,{maxZoom:17,maxNativeZoom:BASE_NATIVE.plain,attribution:ATTRIB}).addTo(map);
+let refLabels=L.tileLayer(AGO+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:17,maxNativeZoom:16,opacity:.9});
+let plainLabels=L.tileLayer(AGO+'Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:17,maxNativeZoom:16,opacity:.9});
 function setBase(){
   map.removeLayer(baseLayer);
-  baseLayer=L.tileLayer(BASE[state.basemap]||BASE.plain,{maxZoom:17,subdomains:'abcd',attribution:ATTRIB});
+  const k=BASE[state.basemap]?state.basemap:'plain';
+  baseLayer=L.tileLayer(BASE[k],{maxZoom:17,maxNativeZoom:BASE_NATIVE[k]||17,attribution:ATTRIB});
   baseLayer.addTo(map);baseLayer.bringToBack();
-  if(state.basemap==='relief'||state.basemap==='sat'){refLabels.addTo(map);}else{map.removeLayer(refLabels);}
+  if(k==='relief'||k==='sat'){refLabels.addTo(map);}else{map.removeLayer(refLabels);}
+  if(k==='plain'){plainLabels.addTo(map);}else{map.removeLayer(plainLabels);}
 }
+setBase();
 let nkskLayer=null;
 function drawBoundary(){
   if(nkskLayer)map.removeLayer(nkskLayer);
