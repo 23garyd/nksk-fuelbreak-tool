@@ -188,6 +188,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
         <button data-f="100">All<small>100%</small></button>
       </div>
     </div>
+    <div class="blk" id="dstblk" style="display:none"></div>
     <div class="blk">
       <h2>Budget &amp; phasing</h2>
       <label class="fld">Annual budget ($)</label>
@@ -197,6 +198,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
         <option value="perha">Cost per ha (low first)</option>
         <option value="perplant">Cost per plant (low first)</option>
         <option value="total">Total cost (low first)</option>
+        <option value="dst">Priority score (high first)</option>
       </select>
       <div class="row2" style="margin-top:9px">
         <button class="btn pri" id="buildplan">Build plan</button>
@@ -260,6 +262,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="dst.js?v=1"></script>
 <script>
 // Static map context (small, not a notebook product). Real data loads in boot().
 const DB={"nksk":[[20.3,-155.34],[20.28,-155.9],[19.6,-156.12],[19.58,-155.34],[20.3,-155.34]],"towns":[["Kawaihae",20.033,-155.829],["Waimea",20.02,-155.668],["Waikoloa Village",19.938,-155.789],["Kailua-Kona",19.639,-155.997],["Hawi",20.241,-155.833]]};
@@ -428,7 +431,7 @@ function drawLegend(lo,hi){
   el.innerHTML=h;
 }
 function activeSegs(){return state.scope==='plan'?SEG.filter(s=>state.plan.has(s.id)):visSegs();}
-function renderAll(){renderReadout();renderLedger();renderDetail();}
+function renderAll(){renderReadout();renderLedger();renderDetail();DST.refresh();}
 function renderReadout(){
   const A=activeSegs().map(s=>({s,c:compute(s)}));let tot=0,impl=0,maint=0,area=0,len=0;
   A.forEach(({s,c})=>{tot+=c.tot;impl+=c.impl_t;maint+=c.maint_t;area+=c.area;len+=s.length_m;});len/=1000;
@@ -525,7 +528,7 @@ function buildCorr(){
 }
 function buildPlan(){
   const budget=+document.getElementById('budget').value,rule=document.getElementById('prule').value;
-  let cand=visSegs().map(s=>{const c=compute(s);return{s,c,key:rule==='perha'?c.tot/c.area:rule==='perplant'?c.tot/c.npl:c.tot};});
+  let cand=visSegs().map(s=>{const c=compute(s);return{s,c,key:rule==='dst'?DST.planKey(s.id,c):rule==='perha'?c.tot/c.area:rule==='perplant'?c.tot/c.npl:c.tot};});
   cand.sort((a,b)=>a.key-b.key);
   state.plan.clear();let spent=0,n=0,area=0;
   for(const{s,c}of cand){if(spent+c.tot<=budget){state.plan.add(s.id);spent+=c.tot;n++;area+=c.area;}}
@@ -535,7 +538,7 @@ function buildPlan(){
 }
 function syncHash(){
   const o={c:state.choice,m:state.metric,t:state.through,f:state.fence,d:state.drought,b:state.basemap,
-    o:state.overlay,op:state.opacity,x:state.excl?1:0,sc:state.scope,cr:[...state.corr].map(r=>CORR_ORDER.indexOf(r)),pl:[...state.plan]};
+    o:state.overlay,op:state.opacity,x:state.excl?1:0,sc:state.scope,cr:[...state.corr].map(r=>CORR_ORDER.indexOf(r)),pl:[...state.plan],ds:DST.getState()};
   history.replaceState(null,'','#'+encodeURIComponent(JSON.stringify(o)));
 }
 function loadHash(){
@@ -545,7 +548,7 @@ function loadHash(){
     state.overlay=o.o;state.opacity=o.op;state.excl=!!o.x;state.scope=o.sc;
     if(!METRICS[state.metric])state.metric='tot';
     state.fence=[0,.5,1].reduce((p,v)=>Math.abs(v-state.fence)<Math.abs(p-state.fence)?v:p,.5);
-    state.corr=new Set((o.cr||[]).map(i=>CORR_ORDER[i]));state.plan=new Set(o.pl||[]);
+    state.corr=new Set((o.cr||[]).map(i=>CORR_ORDER[i]));state.plan=new Set(o.pl||[]);DST.setState(o.ds);
     document.querySelectorAll('#choice button').forEach(x=>x.classList.toggle('on',+x.dataset.c===state.choice));
     document.querySelectorAll('#scope button').forEach(x=>x.classList.toggle('on',x.dataset.s===state.scope));
     document.getElementById('metric').value=state.metric;document.getElementById('basemap').value=state.basemap;
@@ -598,6 +601,7 @@ async function boot(){
   }
   buildMzLegend();
   loadHash();buildCorr();setBase();drawBoundary();drawOverlay();drawSegments();renderAll();
+  DST.init();
   if(nkskLayer){try{map.fitBounds(nkskLayer.getBounds(),{padding:[12,12]});}catch(e){}}
   $('delivv').textContent='$'+deliv().toFixed(3)+'/gal';
 }
