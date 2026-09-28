@@ -25,7 +25,7 @@ const DST = (() => {
 
   let META = null, UNITS = null, SEGU = {}, UNIT_SEGS = {}, layer = null, ready = false, pendingState = null;
   let SCORE = {}, CONTRIB = {}, RANKED = [];
-  const S = { on: true, anchor: null, bw: {}, cw: {}, op: 0.55 };
+  const S = { on: true, anchor: null, bw: {}, cw: {}, op: 0.5 };
 
   /* ---------- live criteria: computed from the road-segment cost model ----------
      key = the `source` name used for kind="live" in dst_config.py.

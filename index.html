@@ -144,9 +144,9 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
       <label class="fld">Basemap</label>
       <select id="basemap">
         <option value="relief">Shaded relief</option>
-        <option value="topo">Topographic</option>
+        <option value="topo" selected>Topographic</option>
         <option value="sat">Satellite</option>
-        <option value="plain" selected>Plain</option>
+        <option value="plain">Plain</option>
       </select>
       <label class="fld">Data overlay (raster)</label>
       <select id="overlay">
@@ -262,7 +262,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="dst.js?v=4"></script>
+<script src="dst.js?v=5"></script>
 <script>
 // Static map context (small, not a notebook product). Real data loads in boot().
 const DB={"nksk":[[20.3,-155.34],[20.28,-155.9],[19.6,-156.12],[19.58,-155.34],[20.3,-155.34]],"towns":[["Kawaihae",20.033,-155.829],["Waimea",20.02,-155.668],["Waikoloa Village",19.938,-155.789],["Kailua-Kona",19.639,-155.997],["Hawi",20.241,-155.833]]};
@@ -297,7 +297,7 @@ function segDroughtP(s){
 }
 const CORR_ORDER=['QUEEN KAAHUMANU','AKONI PULE','KAWAIHAE','WAIKOLOA','MAMALAHOA','DANIEL K INOUYE','SADDLE','HAWAII BELT','KOHALA MOUNTAIN'];
 const ELEV_COL={low:'#bfb9a6',high:'#2f5d4f'};
-const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'plain', /* drought fixed to expected (per-segment HCDP) */
+const state={choice:1,metric:'tot',through:180,fence:.5,drought:'exp',basemap:'topo', /* drought fixed to expected (per-segment HCDP) */
   overlay:'none',opacity:.55,scope:'net',excl:true,corr:new Set(CORR_ORDER),plan:new Set(),sel:null};
 
 function laborPG(){return CREW_RATE/state.through}
