@@ -335,7 +335,7 @@ const METRICS={
 function kf(v){v=Math.round(v);if(v>=1e6)return(v/1e6).toFixed(v>=1e7?0:1)+'M';if(v>=1e3)return(v/1e3).toFixed(v>=1e4?0:1)+'k';return''+v}
 function money(v){return'$'+Math.round(v).toLocaleString('en-US')}
 function titleCase(r){return r.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ')}
-const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([19.95,-155.73],10);
+const map=L.map('map',{zoomControl:false,attributionControl:true,zoomSnap:0.25,zoomDelta:1}).setView([19.95,-155.73],10);  // zoomSnap .25: fitBounds can zoom in past whole levels
 L.control.zoom({position:'topright'}).addTo(map);
 const ATTRIB='Tiles &copy; Esri | Data: NKSK Green Fuel Break pipeline';
 /* All basemap + label tiles come from Esri ArcGIS Online (no key needed).
