@@ -1,9 +1,9 @@
 {
- "placeholder_units": true,
+ "placeholder_units": false,
  "anchor_mode": "points",
  "default_branch_score": 5,
  "default_criterion_score": 5,
- "n_units": 154,
+ "n_units": 141,
  "branches": [
   {
    "id": "wildfire",
@@ -11,46 +11,18 @@
    "owner": "Rachel",
    "criteria": [
     {
-     "id": "avail_burn",
-     "label": "Availability to burn",
-     "desc": "Months with NDVI below study-area median, 2001-2024 (MODIS via HCDP)",
-     "kind": "raster",
+     "id": "firevuln",
+     "label": "Wildfire vulnerability",
+     "desc": "Availability to burn (NDVI), fuel hazard and ignition hazard",
+     "kind": "field",
      "live": null,
      "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "months",
+     "lo": 0,
+     "hi": 100,
+     "units": "score (0-100)",
      "owner": "Rachel",
-     "note": "Rachel's NDVI surface - not yet received.",
-     "status": "awaiting"
-    },
-    {
-     "id": "fuel_hazard",
-     "label": "Fuel hazard",
-     "desc": "Fuel loading by land cover",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "index",
-     "owner": "Rachel",
-     "note": "Rachel's fuel-loading surface - not yet received. Interim candidate: NKSK_FuelTreatmentFiles/HI_LANDFIRE_FBFM40/LH23_F40_240.tif (categorical; needs a value_map from FBFM40 code to fuel load).",
-     "status": "awaiting"
-    },
-    {
-     "id": "ignition",
-     "label": "Ignition hazard",
-     "desc": "Road density weighted by road class, 500 m radius",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "density",
-     "owner": "Rachel",
-     "note": "On disk: RoadDensity_weighted_500m.tif (matches Rachel's method) - confirm it is her final version, then set source + enabled.",
-     "status": "awaiting"
+     "note": "Unit median of Rachel's 30 m surface (field 'firevuln').",
+     "status": "ready"
     }
    ]
   },
@@ -63,190 +35,99 @@
      "id": "sediment",
      "label": "Sediment yield",
      "desc": "Modeled sediment delivery to nearshore reefs",
-     "kind": "raster",
+     "kind": "field",
      "live": null,
      "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "t/ha/yr",
+     "lo": 0,
+     "hi": 100,
+     "units": "score (0-100)",
      "owner": "Rachel / Jasper",
-     "note": "Wai'ula'ula monitoring - in progress.",
+     "note": "Wai'ula'ula monitoring - in progress; not in the Sep 2026 delivery.",
      "status": "awaiting"
     }
    ]
   },
   {
-   "id": "values",
-   "label": "Values to be protected",
+   "id": "consval",
+   "label": "Conservation values",
    "owner": "Rachel",
    "criteria": [
     {
-     "id": "pop_density",
-     "label": "Population density",
-     "desc": "Community value: residents per km^2",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "people/km2",
-     "owner": "Rachel",
-     "note": "Not yet received (Census).",
-     "status": "awaiting"
-    },
-    {
-     "id": "wui",
-     "label": "Wildland-urban interface",
-     "desc": "Community value: share of unit in WUI",
-     "kind": "polygon_cover",
+     "id": "consval",
+     "label": "Conservation values",
+     "desc": "Critical habitat, native biodiversity, protected areas",
+     "kind": "field",
      "live": null,
      "dir": 1,
      "lo": 0,
-     "hi": 1,
-     "units": "share",
+     "hi": 100,
+     "units": "score (0-100)",
      "owner": "Rachel",
-     "note": "Not yet received.",
-     "status": "awaiting"
-    },
+     "note": "Unit median of Rachel's 30 m surface (field 'consval').",
+     "status": "ready"
+    }
+   ]
+  },
+  {
+   "id": "commval",
+   "label": "Community values",
+   "owner": "Rachel",
+   "criteria": [
     {
-     "id": "crit_habitat",
-     "label": "Critical habitat",
-     "desc": "Conservation value: share of unit in USFWS critical habitat",
-     "kind": "polygon_cover",
+     "id": "commval",
+     "label": "Community values",
+     "desc": "Population density and wildland-urban interface",
+     "kind": "field",
      "live": null,
      "dir": 1,
      "lo": 0,
-     "hi": 1,
-     "units": "share",
+     "hi": 100,
+     "units": "score (0-100)",
      "owner": "Rachel",
-     "note": "Not yet received (USFWS).",
-     "status": "awaiting"
-    },
-    {
-     "id": "native_bio",
-     "label": "Native biodiversity",
-     "desc": "Conservation value: native biodiversity index",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "index",
-     "owner": "Rachel",
-     "note": "Not yet received.",
-     "status": "awaiting"
-    },
-    {
-     "id": "protected",
-     "label": "Protected areas",
-     "desc": "Conservation value: share of unit in protected areas",
-     "kind": "polygon_cover",
-     "live": null,
-     "dir": 1,
-     "lo": 0,
-     "hi": 1,
-     "units": "share",
-     "owner": "Rachel",
-     "note": "Not yet received.",
-     "status": "awaiting"
+     "note": "Unit median of Rachel's 30 m surface (field 'commval').",
+     "status": "ready"
     }
    ]
   },
   {
    "id": "response",
    "label": "Responsive management logistics",
-   "owner": "Rachel / HWMO",
+   "owner": "Rachel",
    "criteria": [
     {
-     "id": "transmissivity",
-     "label": "Fire transmissivity",
-     "desc": "Potential for fire to spread from hazardous fuels",
-     "kind": "raster",
+     "id": "respmgmt",
+     "label": "Responsive management logistics",
+     "desc": "Fire transmissivity, emergency resources, evacuation",
+     "kind": "field",
      "live": null,
      "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "index",
+     "lo": 0,
+     "hi": 100,
+     "units": "score (0-100)",
      "owner": "Rachel",
-     "note": "Rachel's exposure analysis - not yet received.",
-     "status": "awaiting"
-    },
-    {
-     "id": "emergency",
-     "label": "Distance to emergency resources",
-     "desc": "Travel time to fire equipment / shelters / hospitals",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "min",
-     "owner": "Rachel / HWMO",
-     "note": "Requested from HWMO. Direction (farther = higher priority?) to confirm.",
-     "status": "awaiting"
-    },
-    {
-     "id": "evacuation",
-     "label": "Evacuation difficulty",
-     "desc": "Ingress / egress constraints",
-     "kind": "raster",
-     "live": null,
-     "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "index",
-     "owner": "Rachel / HWMO",
-     "note": "Requested from HWMO.",
-     "status": "awaiting"
+     "note": "Unit median of Rachel's 30 m surface (field 'respmgmt').",
+     "status": "ready"
     }
    ]
   },
   {
    "id": "prevent",
    "label": "Preventative management logistics",
-   "owner": "Gary",
+   "owner": "Rachel",
    "criteria": [
     {
-     "id": "impl_cost",
-     "label": "Implementation cost",
-     "desc": "Green-fuel-break build cost per km of road in the unit",
-     "kind": "live",
-     "live": "impl_per_km",
-     "dir": -1,
-     "lo": null,
-     "hi": null,
-     "units": "$/km",
-     "owner": "Gary",
-     "note": "Ready - from the tool's own cost model. Enable when units are final.",
-     "status": "awaiting"
-    },
-    {
-     "id": "maint_cost",
-     "label": "Maintenance cost",
-     "desc": "3-year maintenance cost per km of road in the unit",
-     "kind": "live",
-     "live": "maint_per_km",
-     "dir": -1,
-     "lo": null,
-     "hi": null,
-     "units": "$/km",
-     "owner": "Gary",
-     "note": "Ready - from the tool's own cost model. Enable when units are final.",
-     "status": "awaiting"
-    },
-    {
-     "id": "establish",
-     "label": "Likelihood of establishment",
-     "desc": "Chance plantings survive: 1 - mean Year-2 drought-trigger probability",
-     "kind": "live",
-     "live": "establish",
+     "id": "prevmgmt",
+     "label": "Preventative management logistics",
+     "desc": "Establishment likelihood and implementation / maintenance logistics",
+     "kind": "field",
+     "live": null,
      "dir": 1,
-     "lo": null,
-     "hi": null,
-     "units": "0-1",
-     "owner": "Gary",
-     "note": "Interim proxy from drought probability; could be replaced by a species-suitability score per unit.",
-     "status": "awaiting"
+     "lo": 0,
+     "hi": 100,
+     "units": "score (0-100)",
+     "owner": "Rachel",
+     "note": "Unit median of Rachel's 30 m surface (field 'prevmgmt').",
+     "status": "ready"
     }
    ]
   }

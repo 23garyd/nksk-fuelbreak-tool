@@ -29,9 +29,12 @@ OUT_DIR = REPO / "data" / "dst"
 # NKSK management / reporting units (polygons).
 #   None  -> a PLACEHOLDER square grid is generated over the NKSK boundary so the
 #            tool can be built and tested. Replace with Rachel/Nik's layer.
-UNITS_SOURCE = None                 # e.g. DATA_ROOT / "NKSK_units" / "nksk_units.shp"
-UNITS_ID_FIELD = None               # column holding a unique unit ID (None -> auto)
-UNITS_NAME_FIELD = None             # optional human-readable name column
+# Rachel's reporting units (Sep 2026 "forGary" delivery): 141 polygons = NKSK
+# management units x watersheds, with one median 0-100 score per decision input.
+UNITS_SOURCE = REPO / "dst" / "source" / "reporting_units.shp"
+UNITS_ID_FIELD = None               # column holding a unique unit ID (None -> auto: U-000 = shapefile FID 0)
+UNITS_NAME_FIELD = "unit_name"      # optional human-readable name column
+UNITS_TYPE_FIELD = "unit_type"      # optional unit category shown in the popup
 PLACEHOLDER_CELL_KM = 4             # grid size used only while UNITS_SOURCE is None
 
 BOUNDARY = REPO / "data" / "nksk_boundary.geojson"
@@ -74,113 +77,49 @@ DEFAULT_CRITERION_SCORE = 5         # starting slider position inside a branch
 #   owner      who is producing the layer
 #   note       where the data is / what is still needed (shown on hover)
 
+# Rachel's model delivers ONE composite 0-100 score per decision input (the
+# unit median of her 30 m surface), so each branch has a single "field" criterion.
+# The finer sub-criteria (NDVI, fuel hazard, WUI, ...) are already folded into
+# her composites. Fixed bounds (0, 100) keep her scale: u = score / 100.
+# Direction: all five assumed "higher score = higher treatment priority"
+# (to confirm with Rachel, esp. the two management-logistics layers).
+def _rachel(id, label, col, desc):
+    return dict(id=id, label=label, desc=desc, enabled=True, kind="field",
+                source=col, higher_is="priority", bounds=(0, 100),
+                units="score (0-100)", owner="Rachel",
+                note=f"Unit median of Rachel's 30 m surface (field '{col}').")
+
+
 BRANCHES = [
-    {
-        "id": "wildfire", "label": "Wildfire vulnerability", "owner": "Rachel",
-        "criteria": [
-            dict(id="avail_burn", label="Availability to burn",
-                 desc="Months with NDVI below study-area median, 2001-2024 (MODIS via HCDP)",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="months", owner="Rachel",
-                 note="Rachel's NDVI surface - not yet received."),
-            dict(id="fuel_hazard", label="Fuel hazard",
-                 desc="Fuel loading by land cover",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="index", owner="Rachel",
-                 note="Rachel's fuel-loading surface - not yet received. Interim candidate: "
-                      "NKSK_FuelTreatmentFiles/HI_LANDFIRE_FBFM40/LH23_F40_240.tif "
-                      "(categorical; needs a value_map from FBFM40 code to fuel load)."),
-            dict(id="ignition", label="Ignition hazard",
-                 desc="Road density weighted by road class, 500 m radius",
-                 enabled=False, kind="raster", stat="mean",
-                 source=None,  # DATA_ROOT / "NKSK_FuelTreatmentFiles/RoadDensity_export011326/RoadDensity_weighted_500m.tif"
-                 higher_is="priority", bounds=None, units="density", owner="Rachel",
-                 note="On disk: RoadDensity_weighted_500m.tif (matches Rachel's method) - "
-                      "confirm it is her final version, then set source + enabled."),
-        ],
-    },
-    {
-        "id": "nearshore", "label": "Nearshore vulnerability", "owner": "Rachel / Jasper",
-        "criteria": [
-            dict(id="sediment", label="Sediment yield",
-                 desc="Modeled sediment delivery to nearshore reefs",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="t/ha/yr", owner="Rachel / Jasper",
-                 note="Wai'ula'ula monitoring - in progress."),
-        ],
-    },
-    {
-        "id": "values", "label": "Values to be protected", "owner": "Rachel",
-        "criteria": [
-            dict(id="pop_density", label="Population density",
-                 desc="Community value: residents per km^2",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="people/km2", owner="Rachel",
-                 note="Not yet received (Census)."),
-            dict(id="wui", label="Wildland-urban interface",
-                 desc="Community value: share of unit in WUI",
-                 enabled=False, kind="polygon_cover", source=None,
-                 higher_is="priority", bounds=(0, 1), units="share", owner="Rachel",
-                 note="Not yet received."),
-            dict(id="crit_habitat", label="Critical habitat",
-                 desc="Conservation value: share of unit in USFWS critical habitat",
-                 enabled=False, kind="polygon_cover", source=None,
-                 higher_is="priority", bounds=(0, 1), units="share", owner="Rachel",
-                 note="Not yet received (USFWS)."),
-            dict(id="native_bio", label="Native biodiversity",
-                 desc="Conservation value: native biodiversity index",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="index", owner="Rachel",
-                 note="Not yet received."),
-            dict(id="protected", label="Protected areas",
-                 desc="Conservation value: share of unit in protected areas",
-                 enabled=False, kind="polygon_cover", source=None,
-                 higher_is="priority", bounds=(0, 1), units="share", owner="Rachel",
-                 note="Not yet received."),
-        ],
-    },
-    {
-        "id": "response", "label": "Responsive management logistics", "owner": "Rachel / HWMO",
-        "criteria": [
-            dict(id="transmissivity", label="Fire transmissivity",
-                 desc="Potential for fire to spread from hazardous fuels",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="index", owner="Rachel",
-                 note="Rachel's exposure analysis - not yet received."),
-            dict(id="emergency", label="Distance to emergency resources",
-                 desc="Travel time to fire equipment / shelters / hospitals",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="min", owner="Rachel / HWMO",
-                 note="Requested from HWMO. Direction (farther = higher priority?) to confirm."),
-            dict(id="evacuation", label="Evacuation difficulty",
-                 desc="Ingress / egress constraints",
-                 enabled=False, kind="raster", source=None, stat="mean",
-                 higher_is="priority", bounds=None, units="index", owner="Rachel / HWMO",
-                 note="Requested from HWMO."),
-        ],
-    },
-    {
-        "id": "prevent", "label": "Preventative management logistics", "owner": "Gary",
-        "criteria": [
-            # "live" criteria are calculated in the browser from the existing road-
-            # segment cost model, so they follow the throughput / fence / palette
-            # controls. Flip enabled=True to use them (units must exist first).
-            dict(id="impl_cost", label="Implementation cost",
-                 desc="Green-fuel-break build cost per km of road in the unit",
-                 enabled=False, kind="live", source="impl_per_km",
-                 higher_is="lower", bounds=None, units="$/km", owner="Gary",
-                 note="Ready - from the tool's own cost model. Enable when units are final."),
-            dict(id="maint_cost", label="Maintenance cost",
-                 desc="3-year maintenance cost per km of road in the unit",
-                 enabled=False, kind="live", source="maint_per_km",
-                 higher_is="lower", bounds=None, units="$/km", owner="Gary",
-                 note="Ready - from the tool's own cost model. Enable when units are final."),
-            dict(id="establish", label="Likelihood of establishment",
-                 desc="Chance plantings survive: 1 - mean Year-2 drought-trigger probability",
-                 enabled=False, kind="live", source="establish",
-                 higher_is="priority", bounds=None, units="0-1", owner="Gary",
-                 note="Interim proxy from drought probability; could be replaced by a "
-                      "species-suitability score per unit."),
-        ],
-    },
+    {"id": "wildfire", "label": "Wildfire vulnerability", "owner": "Rachel",
+     "criteria": [_rachel("firevuln", "Wildfire vulnerability", "firevuln",
+                          "Availability to burn (NDVI), fuel hazard and ignition hazard")]},
+    {"id": "nearshore", "label": "Nearshore vulnerability", "owner": "Rachel / Jasper",
+     "criteria": [
+         dict(id="sediment", label="Sediment yield",
+              desc="Modeled sediment delivery to nearshore reefs",
+              enabled=False, kind="field", source=None,
+              higher_is="priority", bounds=(0, 100), units="score (0-100)", owner="Rachel / Jasper",
+              note="Wai'ula'ula monitoring - in progress; not in the Sep 2026 delivery."),
+     ]},
+    {"id": "consval", "label": "Conservation values", "owner": "Rachel",
+     "criteria": [_rachel("consval", "Conservation values", "consval",
+                          "Critical habitat, native biodiversity, protected areas")]},
+    {"id": "commval", "label": "Community values", "owner": "Rachel",
+     "criteria": [_rachel("commval", "Community values", "commval",
+                          "Population density and wildland-urban interface")]},
+    {"id": "response", "label": "Responsive management logistics", "owner": "Rachel",
+     "criteria": [_rachel("respmgmt", "Responsive management logistics", "respmgmt",
+                          "Fire transmissivity, emergency resources, evacuation")]},
+    {"id": "prevent", "label": "Preventative management logistics", "owner": "Rachel",
+     "criteria": [_rachel("prevmgmt", "Preventative management logistics", "prevmgmt",
+                          "Establishment likelihood and implementation / maintenance logistics")]},
+    # Gary's browser-side cost criteria (follow the fence / palette / throughput
+    # controls) can be added back to the "prevent" branch if wanted:
+    #   dict(id="impl_cost", label="Implementation cost", enabled=True, kind="live",
+    #        source="impl_per_km", higher_is="lower", bounds=None, units="$/km"),
+    #   dict(id="maint_cost", label="Maintenance cost", enabled=True, kind="live",
+    #        source="maint_per_km", higher_is="lower", bounds=None, units="$/km"),
+    #   dict(id="establish", label="Likelihood of establishment", enabled=True, kind="live",
+    #        source="establish", higher_is="priority", bounds=None, units="0-1"),
 ]

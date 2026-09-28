@@ -166,7 +166,7 @@ const DST = (() => {
     const parts = (CONTRIB[id] || []).slice().sort((a, b) => b.share * b.u - a.share * a.u);
     const missing = allCrit().filter(c => !parts.some(p => p.c.id === c.id));
     return `<div class="dtitle">${f.properties.name}</div>
-      <div class="dsub">${id} · ${Math.round(f.properties.area_ha).toLocaleString()} ha${(UNIT_SEGS[id] || []).length ? ' · ' + UNIT_SEGS[id].length + ' road segments' : ''}</div>
+      <div class="dsub">${id}${f.properties.type ? ' · ' + f.properties.type : ''} · ${Math.round(f.properties.area_ha).toLocaleString()} ha${(UNIT_SEGS[id] || []).length ? ' · ' + UNIT_SEGS[id].length + ' road segments' : ''}</div>
       <div class="kv"><span class="k">Priority score</span><span class="v">${s == null ? '—' : s.toFixed(3)}</span></div>
       <div class="kv"><span class="k">Rank</span><span class="v">${r < 0 ? '—' : (r + 1) + ' of ' + RANKED.length}</span></div>
       ${parts.length ? `<div class="dhd" style="margin-top:10px">What drives the score</div>
@@ -224,13 +224,14 @@ const DST = (() => {
         }).join('');
         return `<div class="dst-br ${act ? '' : 'off'}">
           ${isA ? `<div class="dst-row">${lbl}<div class="dst-anchorbar">anchor</div></div>` : sliderRow(b.id, 'b', bval, !act, lbl)}
-          <details><summary>${b.criteria.length} criteria · ${activeCrit(b).length} with data</summary>${crits}</details>
+          ${b.criteria.length === 1 ? `<div class="hint" style="margin:1px 0 0 20px">${b.criteria[0].desc}</div>`
+            : `<details><summary>${b.criteria.length} criteria · ${activeCrit(b).length} with data</summary>${crits}</details>`}
         </div>`;
       }).join('')}
       <label class="fld">Layer opacity <span class="val">${Math.round(S.op * 100)}%</span></label>
       <input type="range" id="dst_op" min="10" max="100" step="5" value="${Math.round(S.op * 100)}">
       <div class="dst-top">${RANKED.length ? '<div class="dhd">Top priority units</div>' + RANKED.slice(0, 5).map((id, i) =>
-        `<div class="dst-u" data-u="${id}"><span>${i + 1}. ${unitById(id).properties.name}</span><span class="mono">${SCORE[id].toFixed(2)}</span></div>`).join('') : ''}</div>
+        `<div class="dst-u" data-u="${id}"><span>${i + 1}. ${unitById(id).properties.name} <span class="mono" style="color:var(--muted);font-size:11px">${id}</span></span><span class="mono">${SCORE[id].toFixed(2)}</span></div>`).join('') : ''}</div>
       <div class="row2" style="margin-top:9px"><button class="btn gho" id="dst_reset">Reset weights</button></div>`;
     wire(el);
   }

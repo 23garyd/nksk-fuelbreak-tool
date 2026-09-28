@@ -53,14 +53,18 @@ def load_units():
     else:
         u = gpd.read_file(C.UNITS_SOURCE).to_crs(C.WORK_CRS)
         u["unit_id"] = (u[C.UNITS_ID_FIELD].astype(str) if C.UNITS_ID_FIELD
-                        else [f"U-{i + 1:03d}" for i in range(len(u))])
+                        else [f"U-{i:03d}" for i in range(len(u))])
         u["name"] = (u[C.UNITS_NAME_FIELD].astype(str) if C.UNITS_NAME_FIELD
                      else u["unit_id"])
+        type_field = getattr(C, "UNITS_TYPE_FIELD", None)
+        if type_field:
+            u["type"] = u[type_field].astype(str)
         if u["unit_id"].duplicated().any():
             raise ValueError("UNITS_ID_FIELD is not unique")
         placeholder = False
     u["area_ha"] = u.geometry.area / 1e4
-    return u[["unit_id", "name", "area_ha", "geometry"]], placeholder
+    cols = ["unit_id", "name"] + (["type"] if "type" in u else []) + ["area_ha", "geometry"]
+    return u[cols], placeholder
 
 
 # ---------------------------------------------------------------------------

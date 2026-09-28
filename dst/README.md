@@ -17,13 +17,19 @@ others 0–9. Each unit gets a 0–1 priority score and a rank. "Priority score
 | `dst.js` | Weights, scoring, map layer, panel, popup | No |
 | `index.html` | 8 one-line hooks (search `DST.` / `dstblk`) | No |
 
-## Current state
+## Current state (Sep 2026)
 
-- **Units:** placeholder 4 km grid over the NKSK boundary (`UNITS_SOURCE = None`).
-- **Criteria:** all 15 are *awaiting data*, so the panel shows greyed sliders
-  and the map shows outlines only.
-- **Demo:** add `?dstdemo=1` to the URL (e.g. `http://localhost:8000/?dstdemo=1`)
-  to fill every criterion with fake values and try the sliders.
+- **Units:** Rachel's 141 reporting units (NKSK management units × watersheds),
+  `dst/source/reporting_units.shp` (EPSG:32605). IDs `U-000`… = shapefile FID,
+  so they match the FID_ column in her `*_stats.dbf` tables.
+- **Criteria:** Rachel's five composite inputs, each the unit **median** of her
+  30 m 0–100 surface (fields `firevuln`, `consval`, `commval`, `respmgmt`,
+  `prevmgmt`), one per branch. Rescaled with fixed bounds 0–100 (u = score/100),
+  all read as "higher = higher priority". Nearshore vulnerability is still
+  awaiting data.
+- The 30 m rasters and zonal-stat tables she sent are not in the repo (not
+  needed for the web tool); keep them with the project GIS data.
+- **Demo:** `?dstdemo=1` still fills any *awaiting* criterion with fake values.
 
 ## When a layer arrives
 
