@@ -124,9 +124,10 @@ const DST = (() => {
   }
 
   /* ---------- map ---------- */
+  let SEL = null;                            // unit_id of the clicked unit (outlined)
   function style(f) {
-    const s = SCORE[f.properties.unit_id];
-    return { color: '#ffffff', weight: 0.7, opacity: S.on ? 0.9 : 0,
+    const s = SCORE[f.properties.unit_id], sel = f.properties.unit_id === SEL;
+    return { color: sel ? '#111111' : '#ffffff', weight: sel ? 3 : 0.7, opacity: S.on ? (sel ? 1 : 0.9) : 0,
       fillColor: s == null ? NODATA : hexMix(s), fillOpacity: S.on ? (s == null ? 0.25 : S.op) : 0 };
   }
   function drawLayer() {
@@ -142,6 +143,7 @@ const DST = (() => {
       }).addTo(map);
     }
     layer.setStyle(style);
+    layer.eachLayer(l => { if (l.feature.properties.unit_id === SEL) l.bringToFront(); });
     layer.eachLayer(l => { const el = l.getElement && l.getElement(); if (el) el.style.pointerEvents = S.on ? '' : 'none'; });
     drawLegend();
   }
@@ -182,7 +184,8 @@ const DST = (() => {
       .setLatLng(ll || L.geoJSON(f).getBounds().getCenter())
       .setContent('<div class="segpopbody">' + popupHTML(f) + '</div>').openOn(map);
     popup._dstUnit = f;
-    map.once('popupclose', () => { popup = null; });
+    SEL = f.properties.unit_id; drawLayer();         // outline the exact unit boundary
+    map.once('popupclose', () => { popup = null; SEL = null; drawLayer(); });
   }
 
   /* ---------- sidebar ---------- */
@@ -267,6 +270,7 @@ const DST = (() => {
 
   function injectCSS() {
     const css = `
+    .leaflet-dst-pane path:focus{outline:none}   /* no browser focus box on click */
     #dstblk .dst-tog{font-family:"Barlow";font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink2);display:flex;gap:4px;align-items:center;cursor:pointer}
     #dstblk .dst-br{border-top:1px dotted var(--line);padding:7px 0 4px}
     #dstblk .dst-br.off{opacity:.55}
