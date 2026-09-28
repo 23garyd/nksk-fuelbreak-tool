@@ -8,8 +8,9 @@ Reads dst/dst_config.py and writes:
                               enabled criterion (c_<id>), null where no data
     data/dst/criteria.json    the criteria tree, labels, directions, 0-1 rescale
                               bounds, status (ready / awaiting data), options
-    data/dst/seg_units.json   road segment id -> unit id (for live cost criteria
-                              and the "Priority score" plan rule)
+    data/dst/seg_units.json   road segment id -> [[unit id, area weight], ...]
+                              (for live cost criteria and the "Priority score"
+                              plan rule; weights sum to 1)
 
 Nothing in here is specific to a particular data layer: add layers by editing
 dst_config.py only.
@@ -130,14 +131,29 @@ CALC = {"raster": calc_raster, "polygon_cover": calc_polygon_cover,
 # Segment -> unit lookup
 # ---------------------------------------------------------------------------
 def segment_units(units):
+    """Area-weighted link from each road segment to the units on either side.
+
+    Units are split along roads, so a segment usually IS the edge between
+    units. Buffer the segment (flat ends) by SEG_BUFFER_M, intersect with the
+    units, and weight each unit by its share of the buffer area. Shares below
+    SEG_MIN_SHARE (digitizing slivers) are dropped and the rest renormalized.
+    """
     seg = gpd.read_file(C.SEGMENTS).to_crs(C.WORK_CRS)
-    mids = seg.copy()
-    mids["geometry"] = seg.geometry.interpolate(0.5, normalized=True)
-    j = gpd.sjoin(mids[["id", "geometry"]], units[["unit_id", "geometry"]],
-                  predicate="within", how="left")
-    j = j.drop_duplicates("id")
-    return {int(r.id): (None if not isinstance(r.unit_id, str) else r.unit_id)
-            for r in j.itertuples()}
+    buf = seg[["id"]].copy()
+    buf["geometry"] = seg.geometry.buffer(C.SEG_BUFFER_M, cap_style=2)
+    buf = gpd.GeoDataFrame(buf, crs=C.WORK_CRS)
+    ov = gpd.overlay(buf, units[["unit_id", "geometry"]], how="intersection",
+                     keep_geom_type=True)
+    ov["a"] = ov.geometry.area
+    out = {}
+    for sid, g in ov.groupby("id"):
+        a = g.groupby("unit_id")["a"].sum()
+        a = a[a / a.sum() >= C.SEG_MIN_SHARE]
+        w = (a / a.sum()).sort_values(ascending=False)
+        out[int(sid)] = [[uid, round(float(v), 3)] for uid, v in w.items()]
+    for sid in seg["id"]:
+        out.setdefault(int(sid), [])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -201,10 +217,12 @@ def main():
 
     n_ready = sum(c["status"] == "ready" for b in tree for c in b["criteria"])
     n_all = sum(len(b["criteria"]) for b in tree)
-    mapped = sum(v is not None for v in seg_map.values())
+    mapped = sum(bool(v) for v in seg_map.values())
+    multi = sum(len(v) > 1 for v in seg_map.values())
     print(f"units: {len(units)} ({'PLACEHOLDER grid' if placeholder else C.UNITS_SOURCE})")
     print(f"criteria ready: {n_ready}/{n_all}")
-    print(f"segments mapped to a unit: {mapped}/{len(seg_map)}")
+    print(f"segments linked to >=1 unit: {mapped}/{len(seg_map)} "
+          f"({multi} border 2+ units; {C.SEG_BUFFER_M} m buffer, area-weighted)")
     print(f"wrote {C.OUT_DIR}")
 
 

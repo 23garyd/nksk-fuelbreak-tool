@@ -41,6 +41,13 @@ BOUNDARY = REPO / "data" / "nksk_boundary.geojson"
 SEGMENTS = REPO / "data" / "segments.geojson"
 WORK_CRS = "EPSG:32605"             # UTM 5N, metres -- used for areas/overlays
 
+# Road segment -> unit link. Rachel's units are split ALONG roads, so most
+# segments are the boundary between 2+ units. Each segment is buffered by this
+# many metres (flat ends) and linked to every unit the buffer overlaps, weighted
+# by overlap area. A segment's priority = area-weighted mean of those units.
+SEG_BUFFER_M = 30
+SEG_MIN_SHARE = 0.02                # drop digitizing slivers below this share
+
 # ----------------------------------------------------------------------------
 # Weighting options (read by the web tool)
 # ----------------------------------------------------------------------------

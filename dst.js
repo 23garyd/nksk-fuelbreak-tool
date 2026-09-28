@@ -166,7 +166,7 @@ const DST = (() => {
     const parts = (CONTRIB[id] || []).slice().sort((a, b) => b.share * b.u - a.share * a.u);
     const missing = allCrit().filter(c => !parts.some(p => p.c.id === c.id));
     return `<div class="dtitle">${f.properties.name}</div>
-      <div class="dsub">${id}${f.properties.type ? ' · ' + f.properties.type : ''} · ${Math.round(f.properties.area_ha).toLocaleString()} ha${(UNIT_SEGS[id] || []).length ? ' · ' + UNIT_SEGS[id].length + ' road segments' : ''}</div>
+      <div class="dsub">${id}${f.properties.type ? ' · ' + f.properties.type : ''} · ${Math.round(f.properties.area_ha).toLocaleString()} ha${(UNIT_SEGS[id] || []).length ? ' · ' + UNIT_SEGS[id].length + ' adjacent road segments' : ''}</div>
       <div class="kv"><span class="k">Priority score</span><span class="v">${s == null ? '—' : s.toFixed(3)}</span></div>
       <div class="kv"><span class="k">Rank</span><span class="v">${r < 0 ? '—' : (r + 1) + ' of ' + RANKED.length}</span></div>
       ${parts.length ? `<div class="dhd" style="margin-top:10px">What drives the score</div>
@@ -308,9 +308,26 @@ const DST = (() => {
     injectCSS(); ready = true;
     score(); drawLayer(); buildPanel();
   }
-  function buildUnitSegs() {
+  // seg_units.json: segment id -> [[unit_id, area weight], ...] (older builds: a single unit id)
+  const segLinks = id => { const v = SEGU[id]; return !v ? [] : typeof v === 'string' ? [[v, 1]] : v; };
+  function buildUnitSegs() {                // unit -> segments along it (a border segment counts for each side)
     UNIT_SEGS = {};
-    SEG.forEach(s => { const u = SEGU[s.id]; if (u && !s.excl) (UNIT_SEGS[u] = UNIT_SEGS[u] || []).push(s); });
+    SEG.forEach(s => { if (!s.excl) segLinks(s.id).forEach(([u]) => (UNIT_SEGS[u] = UNIT_SEGS[u] || []).push(s)); });
+  }
+  function segScore(id) {                   // area-weighted mean of the adjacent units' scores
+    let n = 0, d = 0;
+    segLinks(id).forEach(([u, w]) => { const s = SCORE[u]; if (s != null) { n += w * s; d += w; } });
+    return d ? n / d : null;
+  }
+  function segHTML(id) {                    // block for the road-segment popup
+    const links = segLinks(id);
+    if (!ready || !S.on || !links.length) return '';
+    const s = segScore(id);
+    return `<div class="dhd" style="margin-top:11px">Priority score · ${s == null ? '—' : s.toFixed(2)}</div>
+      <div class="hint" style="margin-top:0">Area-weighted mean of the units along this road:</div>
+      ${links.map(([u, w]) => { const f = unitById(u), su = SCORE[u];
+        return `<div class="kv"><span class="k">${f ? f.properties.name : u} <span class="mono" style="font-size:11px;color:var(--muted)">${u}</span></span>
+          <span class="v">${su == null ? '—' : su.toFixed(2)} <span style="color:var(--muted);font-weight:400">× ${Math.round(w * 100)}%</span></span></div>`; }).join('')}`;
   }
   function refresh() {                  // called from renderAll(): cost inputs changed
     if (!ready || !allCrit().some(c => isActive(c) && c.kind === 'live' && c.status === 'ready')) return;
@@ -318,7 +335,7 @@ const DST = (() => {
     if (popup && popup._dstUnit) popup.setContent('<div class="segpopbody">' + popupHTML(popup._dstUnit) + '</div>');
   }
   function planKey(segId, c) {          // used by buildPlan(): smaller = picked first
-    const s = SCORE[SEGU[segId]];
+    const s = segScore(segId);
     return s == null ? 1e9 + c.tot / c.area : -s;
   }
   function getState() { return ready ? { on: S.on ? 1 : 0, a: S.anchor, bw: S.bw, cw: S.cw, op: S.op } : pendingState; }
@@ -329,5 +346,5 @@ const DST = (() => {
   }
   function setState(o) { if (ready) { applyState(o); update(); } else pendingState = o; }
 
-  return { init, refresh, planKey, getState, setState, scores: () => SCORE };
+  return { init, refresh, planKey, segHTML, getState, setState, scores: () => SCORE, segScore };
 })();

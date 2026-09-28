@@ -27,6 +27,11 @@ others 0–9. Each unit gets a 0–1 priority score and a rank. "Priority score
   `prevmgmt`), one per branch. Rescaled with fixed bounds 0–100 (u = score/100),
   all read as "higher = higher priority". Nearshore vulnerability is still
   awaiting data.
+- **Segments → units:** Rachel's units are split along roads, so most road
+  segments are the edge between 2+ units. Each segment is buffered 30 m
+  (`SEG_BUFFER_M`) and linked to every unit it overlaps, weighted by overlap
+  area; its priority (plan rule, segment popup) is the area-weighted mean of
+  those units' scores.
 - The 30 m rasters and zonal-stat tables she sent are not in the repo (not
   needed for the web tool); keep them with the project GIS data.
 - **Demo:** `?dstdemo=1` still fills any *awaiting* criterion with fake values.
