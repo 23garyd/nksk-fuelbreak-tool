@@ -169,6 +169,7 @@ const DST = (() => {
     const missing = allCrit().filter(c => !parts.some(p => p.c.id === c.id));
     return `<div class="dtitle">${f.properties.name}</div>
       <div class="dsub">${id}${f.properties.type ? ' · ' + f.properties.type : ''} · ${Math.round(f.properties.area_ha).toLocaleString()} ha${(UNIT_SEGS[id] || []).length ? ' · ' + UNIT_SEGS[id].length + ' adjacent road segments' : ''}</div>
+      ${f.properties.landowner ? `<div class="dsub">${f.properties.landowner}${f.properties.dev_opp ? ' · ' + f.properties.dev_opp : ''}</div>` : ''}
       <div class="kv"><span class="k">Priority score</span><span class="v">${s == null ? '—' : s.toFixed(3)}</span></div>
       <div class="kv"><span class="k">Rank</span><span class="v">${r < 0 ? '—' : (r + 1) + ' of ' + RANKED.length}</span></div>
       ${parts.length ? `<div class="dhd" style="margin-top:10px">What drives the score</div>

@@ -29,12 +29,17 @@ OUT_DIR = REPO / "data" / "dst"
 # NKSK management / reporting units (polygons).
 #   None  -> a PLACEHOLDER square grid is generated over the NKSK boundary so the
 #            tool can be built and tested. Replace with Rachel/Nik's layer.
-# Rachel's reporting units (Sep 2026 "forGary" delivery): 141 polygons = NKSK
-# management units x watersheds, with one median 0-100 score per decision input.
+# Rachel's reporting units (Oct 2026 "forGary_2" delivery, reportingunits_102826):
+# 114 polygons = NKSK management units x landowner, with one median 0-100 score
+# per decision input. Her MEDIAN* join fields were renamed to the criterion ids
+# (MEDIAN=firevuln, MEDIAN_1=consval, MEDIAN_12=commval, MEDIAN__13=prevmgmt,
+# MEDIAN__14=nearvuln, MEDIAN__15=respmgmt) when copied into dst/source/.
 UNITS_SOURCE = REPO / "dst" / "source" / "reporting_units.shp"
 UNITS_ID_FIELD = None               # column holding a unique unit ID (None -> auto: U-000 = shapefile FID 0)
 UNITS_NAME_FIELD = "unit_name"      # optional human-readable name column
 UNITS_TYPE_FIELD = "unit_type"      # optional unit category shown in the popup
+UNITS_INFO_FIELDS = {"landowner": "landowner",   # extra columns shown in the unit popup
+                     "dev_opp": "dev_opp"}       # {output property: source column}
 PLACEHOLDER_CELL_KM = 4             # grid size used only while UNITS_SOURCE is None
 
 BOUNDARY = REPO / "data" / "nksk_boundary.geojson"
@@ -88,8 +93,8 @@ DEFAULT_CRITERION_SCORE = 5         # starting slider position inside a branch
 # unit median of her 30 m surface), so each branch has a single "field" criterion.
 # The finer sub-criteria (NDVI, fuel hazard, WUI, ...) are already folded into
 # her composites. Fixed bounds (0, 100) keep her scale: u = score / 100.
-# Direction: all five assumed "higher score = higher treatment priority"
-# (to confirm with Rachel, esp. the two management-logistics layers).
+# Direction: all six assumed "higher score = higher treatment priority"
+# (to confirm with Rachel, esp. the two management-logistics layers and nearshore).
 def _rachel(id, label, col, desc):
     return dict(id=id, label=label, desc=desc, enabled=True, kind="field",
                 source=col, higher_is="priority", bounds=(0, 100),
@@ -102,13 +107,8 @@ BRANCHES = [
      "criteria": [_rachel("firevuln", "Wildfire vulnerability", "firevuln",
                           "Availability to burn (NDVI), fuel hazard and ignition hazard")]},
     {"id": "nearshore", "label": "Nearshore vulnerability", "owner": "Rachel / Jasper",
-     "criteria": [
-         dict(id="sediment", label="Sediment yield",
-              desc="Modeled sediment delivery to nearshore reefs",
-              enabled=False, kind="field", source=None,
-              higher_is="priority", bounds=(0, 100), units="score (0-100)", owner="Rachel / Jasper",
-              note="Wai'ula'ula monitoring - in progress; not in the Sep 2026 delivery."),
-     ]},
+     "criteria": [_rachel("nearvuln", "Nearshore vulnerability", "nearvuln",
+                          "Sediment delivery / runoff risk to nearshore reefs")]},
     {"id": "consval", "label": "Conservation values", "owner": "Rachel",
      "criteria": [_rachel("consval", "Conservation values", "consval",
                           "Critical habitat, native biodiversity, protected areas")]},

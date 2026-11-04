@@ -3,7 +3,7 @@
  "anchor_mode": "points",
  "default_branch_score": 5,
  "default_criterion_score": 5,
- "n_units": 141,
+ "n_units": 114,
  "branches": [
   {
    "id": "wildfire",
@@ -32,18 +32,18 @@
    "owner": "Rachel / Jasper",
    "criteria": [
     {
-     "id": "sediment",
-     "label": "Sediment yield",
-     "desc": "Modeled sediment delivery to nearshore reefs",
+     "id": "nearvuln",
+     "label": "Nearshore vulnerability",
+     "desc": "Sediment delivery / runoff risk to nearshore reefs",
      "kind": "field",
      "live": null,
      "dir": 1,
      "lo": 0,
      "hi": 100,
      "units": "score (0-100)",
-     "owner": "Rachel / Jasper",
-     "note": "Wai'ula'ula monitoring - in progress; not in the Sep 2026 delivery.",
-     "status": "awaiting"
+     "owner": "Rachel",
+     "note": "Unit median of Rachel's 30 m surface (field 'nearvuln').",
+     "status": "ready"
     }
    ]
   },

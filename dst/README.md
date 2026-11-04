@@ -17,16 +17,22 @@ others 0–9. Each unit gets a 0–1 priority score and a rank. "Priority score
 | `dst.js` | Weights, scoring, map layer, panel, popup | No |
 | `index.html` | 8 one-line hooks (search `DST.` / `dstblk`) | No |
 
-## Current state (Sep 2026)
+## Current state (Nov 2026)
 
-- **Units:** Rachel's 141 reporting units (NKSK management units × watersheds),
-  `dst/source/reporting_units.shp` (EPSG:32605). IDs `U-000`… = shapefile FID,
-  so they match the FID_ column in her `*_stats.dbf` tables.
-- **Criteria:** Rachel's five composite inputs, each the unit **median** of her
-  30 m 0–100 surface (fields `firevuln`, `consval`, `commval`, `respmgmt`,
-  `prevmgmt`), one per branch. Rescaled with fixed bounds 0–100 (u = score/100),
-  all read as "higher = higher priority". Nearshore vulnerability is still
-  awaiting data.
+- **Units:** Rachel's 114 reporting units (NKSK management units × landowner;
+  Oct 2026 `forGary_2` delivery, `reportingunits_102826.shp`), copied to
+  `dst/source/reporting_units.shp` (EPSG:32605). IDs `U-000`…`U-113` =
+  shapefile FID, so they match the FID_ column in her `*_stats1026.dbf` tables.
+  They do **not** line up with the Sep 2026 IDs (141 units). `landowner` and
+  `dev_opp` are passed through to the unit popup (`UNITS_INFO_FIELDS`).
+- **Criteria:** Rachel's six composite inputs, each the unit **median** of her
+  30 m 0–100 surface (fields `firevuln`, `nearvuln`, `consval`, `commval`,
+  `respmgmt`, `prevmgmt`), one per branch. Rescaled with fixed bounds 0–100
+  (u = score/100), all read as "higher = higher priority". Her shapefile has
+  these as ArcGIS join names; they were renamed on copy: `MEDIAN`=firevuln,
+  `MEDIAN_1`=consval, `MEDIAN_12`=commval, `MEDIAN__13`=prevmgmt,
+  `MEDIAN__14`=nearvuln, `MEDIAN__15`=respmgmt (checked against each DBF).
+  Responsive management uses her updated surface (`responsive_mgmt_update.tif`).
 - **Segments → units:** Rachel's units are split along roads, so most road
   segments are the edge between 2+ units. Each segment is buffered 30 m
   (`SEG_BUFFER_M`) and linked to every unit it overlaps, weighted by overlap

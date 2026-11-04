@@ -60,11 +60,15 @@ def load_units():
         type_field = getattr(C, "UNITS_TYPE_FIELD", None)
         if type_field:
             u["type"] = u[type_field].astype(str)
+        info = getattr(C, "UNITS_INFO_FIELDS", None) or {}
+        for prop, col in info.items():
+            u[prop] = u[col].astype(str)
         if u["unit_id"].duplicated().any():
             raise ValueError("UNITS_ID_FIELD is not unique")
         placeholder = False
     u["area_ha"] = u.geometry.area / 1e4
-    cols = ["unit_id", "name"] + (["type"] if "type" in u else []) + ["area_ha", "geometry"]
+    extra = [p for p in (getattr(C, "UNITS_INFO_FIELDS", None) or {}) if p in u]
+    cols = ["unit_id", "name"] + (["type"] if "type" in u else []) + extra + ["area_ha", "geometry"]
     return u[cols], placeholder
 
 
