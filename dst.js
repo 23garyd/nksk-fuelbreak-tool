@@ -20,11 +20,11 @@
 const DST = (() => {
   const PATH = 'data/dst/';
   const DEMO = /[?&]dstdemo=1\b/.test(location.search);
-  const RAMP = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725']; // purple → yellow (colour-blind safe)
+  const RAMP = ['#3f8ccc', '#78a4d4', '#a4bddc', '#cdd7e3', '#f4f2ea', '#f7c5b6', '#f29984', '#e76a54', '#d73027']; // blue (low) → neutral → red (high), CIELAB-interpolated, symmetric
   const NODATA = '#d9d8cf';
 
   let META = null, UNITS = null, SEGU = {}, UNIT_SEGS = {}, layer = null, ready = false, pendingState = null;
-  let SCORE = {}, CONTRIB = {}, RANKED = [];
+  let SCORE = {}, CONTRIB = {}, RANKED = [], SLO = 0, SMID = 0.5, SHI = 1;   // current score min/median/max; ramp's neutral midpoint sits at the median
   const S = { on: true, anchor: null, bw: {}, cw: {}, op: 0.5 };
 
   /* ---------- live criteria: computed from the road-segment cost model ----------
@@ -121,6 +121,8 @@ const DST = (() => {
       CONTRIB[id] = parts.map(p => ({ ...p, share: p.share / den }));
     });
     RANKED = Object.entries(SCORE).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    if (RANKED.length) { const n = RANKED.length, v = i => SCORE[RANKED[i]];
+      SHI = v(0); SLO = v(n - 1); SMID = n % 2 ? v((n - 1) / 2) : (v(n / 2 - 1) + v(n / 2)) / 2; }
   }
 
   /* ---------- map ---------- */
@@ -128,7 +130,11 @@ const DST = (() => {
   function style(f) {
     const s = SCORE[f.properties.unit_id], sel = f.properties.unit_id === SEL;
     return { color: sel ? '#111111' : '#ffffff', weight: sel ? 3 : 0.7, opacity: S.on ? (sel ? 1 : 0.9) : 0,
-      fillColor: s == null ? NODATA : hexMix(s), fillOpacity: S.on ? (s == null ? 0.25 : S.op) : 0 };
+      fillColor: s == null ? NODATA : hexMix(rampT(s)), fillOpacity: S.on ? (s == null ? 0.25 : S.op) : 0 };
+  }
+  function rampT(s) {                        // min→median → 0→0.5, median→max → 0.5→1
+    if (s <= SMID) return SMID > SLO ? 0.5 * (s - SLO) / (SMID - SLO) : 0.5;
+    return SHI > SMID ? 0.5 + 0.5 * (s - SMID) / (SHI - SMID) : 0.5;
   }
   function drawLayer() {
     if (!layer) {
@@ -157,7 +163,7 @@ const DST = (() => {
     const any = RANKED.length;
     el.innerHTML = `<div class="lt">Priority score${META.placeholder_units ? ' · placeholder units' : ''}</div>` +
       (any ? `<div class="ramp" style="background:linear-gradient(90deg,${RAMP.join(',')})"></div>
-              <div class="ramplab"><span>lower</span><span>higher</span></div>` :
+              <div class="ramplab"><span>${SLO.toFixed(2)} low</span><span>${SMID.toFixed(2)} median</span><span>${SHI.toFixed(2)} high</span></div>` :
              `<div style="font-size:12px;color:var(--muted)">No criteria have data yet —<br>unit outlines only.</div>`) +
       `<div class="legdiv"></div><div class="legcat"><span><i style="background:${NODATA}"></i>No data</span></div>` +
       (DEMO ? `<div class="hint flag" style="margin-top:4px">DEMO values — not real data</div>` : '');
