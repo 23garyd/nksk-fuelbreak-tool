@@ -24,7 +24,8 @@ const DST = (() => {
   const NODATA = '#d9d8cf';
 
   let META = null, UNITS = null, SEGU = {}, UNIT_SEGS = {}, layer = null, ready = false, pendingState = null;
-  let SCORE = {}, CONTRIB = {}, RANKED = [], SLO = 0, SMID = 0.5, SHI = 1;   // current score min/median/max; ramp's neutral midpoint sits at the median
+  let SCORE = {}, CONTRIB = {}, RANKED = [], SLO = 0, SMID = 0.5, SHI = 1;   // ramp ends = 2nd/98th percentile of current scores (percent clip); neutral midpoint = median
+  const CLIP = 0.02;                         // percent clip at each end; units beyond the cutoffs get the full end colour
   const S = { on: true, anchor: null, bw: {}, cw: {}, op: 0.5 };
 
   /* ---------- live criteria: computed from the road-segment cost model ----------
@@ -121,8 +122,12 @@ const DST = (() => {
       CONTRIB[id] = parts.map(p => ({ ...p, share: p.share / den }));
     });
     RANKED = Object.entries(SCORE).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]).map(([k]) => k);
-    if (RANKED.length) { const n = RANKED.length, v = i => SCORE[RANKED[i]];
-      SHI = v(0); SLO = v(n - 1); SMID = n % 2 ? v((n - 1) / 2) : (v(n / 2 - 1) + v(n / 2)) / 2; }
+    if (RANKED.length) {
+      const asc = RANKED.map(k => SCORE[k]).reverse(), n = asc.length;
+      const q = p => { const x = p * (n - 1), i = Math.floor(x), f = x - i;   // linear-interpolated percentile (same as numpy default)
+        return i + 1 < n ? asc[i] + f * (asc[i + 1] - asc[i]) : asc[n - 1]; };
+      SLO = q(CLIP); SMID = q(0.5); SHI = q(1 - CLIP);
+    }
   }
 
   /* ---------- map ---------- */
@@ -132,7 +137,8 @@ const DST = (() => {
     return { color: sel ? '#111111' : '#ffffff', weight: sel ? 3 : 0.7, opacity: S.on ? (sel ? 1 : 0.9) : 0,
       fillColor: s == null ? NODATA : hexMix(rampT(s)), fillOpacity: S.on ? (s == null ? 0.25 : S.op) : 0 };
   }
-  function rampT(s) {                        // min→median → 0→0.5, median→max → 0.5→1
+  function rampT(s) {                        // p2→median → 0→0.5, median→p98 → 0.5→1; clamped beyond the clip cutoffs
+    s = Math.min(SHI, Math.max(SLO, s));
     if (s <= SMID) return SMID > SLO ? 0.5 * (s - SLO) / (SMID - SLO) : 0.5;
     return SHI > SMID ? 0.5 + 0.5 * (s - SMID) / (SHI - SMID) : 0.5;
   }
@@ -167,7 +173,7 @@ const DST = (() => {
     const any = RANKED.length;
     el.innerHTML = `<div class="lt">Priority score${META.placeholder_units ? ' · placeholder units' : ''}</div>` +
       (any ? `<div class="ramp" style="background:linear-gradient(90deg,${rampStops()})"></div>
-              <div class="ramplab"><span>${SLO.toFixed(2)}</span><span>${SHI.toFixed(2)}</span></div>` :
+              <div class="ramplab"><span>≤ ${SLO.toFixed(2)}</span><span>≥ ${SHI.toFixed(2)}</span></div>` :
              `<div style="font-size:12px;color:var(--muted)">No criteria have data yet —<br>unit outlines only.</div>`) +
       `<div class="legdiv"></div><div class="legcat"><span><i style="background:${NODATA}"></i>No data</span></div>` +
       (DEMO ? `<div class="hint flag" style="margin-top:4px">DEMO values — not real data</div>` : '');
