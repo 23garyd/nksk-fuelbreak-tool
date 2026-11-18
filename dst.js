@@ -136,6 +136,10 @@ const DST = (() => {
     if (s <= SMID) return SMID > SLO ? 0.5 * (s - SLO) / (SMID - SLO) : 0.5;
     return SHI > SMID ? 0.5 + 0.5 * (s - SMID) / (SHI - SMID) : 0.5;
   }
+  function rampStops() {                     // legend bar is linear in score: neutral stop sits at the median's position
+    const h = (RAMP.length - 1) / 2, p = SHI > SLO ? (SMID - SLO) / (SHI - SLO) * 100 : 50;
+    return RAMP.map((c, i) => `${c} ${(i <= h ? p * i / h : p + (100 - p) * (i - h) / h).toFixed(1)}%`).join(',');
+  }
   function drawLayer() {
     if (!layer) {
       if (!map.getPane('dstPane')) { map.createPane('dstPane').style.zIndex = 350; } // below road segments
@@ -155,15 +159,15 @@ const DST = (() => {
   }
   function drawLegend() {
     let el = document.getElementById('dstlegend');
-    if (!el) { el = document.createElement('div'); el.id = 'dstlegend'; el.className = 'legend'; el.style.left = 'auto'; el.style.right = '11px';
+    if (!el) { el = document.createElement('div'); el.id = 'dstlegend'; el.className = 'legend'; el.style.left = 'auto'; el.style.right = '11px'; el.style.minWidth = '155px';
       document.querySelector('.mapwrap').appendChild(el); }
     el.style.display = S.on ? 'block' : 'none';
     const mz = document.getElementById('mzlegend');
     el.style.bottom = (mz && mz.style.display !== 'none' ? mz.offsetHeight + 22 : 11) + 'px';
     const any = RANKED.length;
     el.innerHTML = `<div class="lt">Priority score${META.placeholder_units ? ' · placeholder units' : ''}</div>` +
-      (any ? `<div class="ramp" style="background:linear-gradient(90deg,${RAMP.join(',')})"></div>
-              <div class="ramplab"><span>${SLO.toFixed(2)} low</span><span>${SMID.toFixed(2)} median</span><span>${SHI.toFixed(2)} high</span></div>` :
+      (any ? `<div class="ramp" style="background:linear-gradient(90deg,${rampStops()})"></div>
+              <div class="ramplab"><span>${SLO.toFixed(2)}</span><span>${SHI.toFixed(2)}</span></div>` :
              `<div style="font-size:12px;color:var(--muted)">No criteria have data yet —<br>unit outlines only.</div>`) +
       `<div class="legdiv"></div><div class="legcat"><span><i style="background:${NODATA}"></i>No data</span></div>` +
       (DEMO ? `<div class="hint flag" style="margin-top:4px">DEMO values — not real data</div>` : '');
