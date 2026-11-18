@@ -8,6 +8,7 @@ Reads the real pipeline products and writes:
   data/segments.geojson        road segments + attributes the tool needs
   data/moisture_zones.geojson  moisture-zone polygons (categorical overlay)
   data/grids/<key>.png + .json  raster overlays (image + bounds/min/max)
+                               (cwd, elev, pet, aet, ndvisd, ndvimbm)
 """
 import os, json, re, warnings
 import numpy as np
@@ -256,4 +257,8 @@ export_raster(src("outputs", "NKSK_CWD_annual_mm.tif"),                 "cwd",  
 export_raster(src("inputs", "hawaii_dem"),                             "elev", "Greys")
 export_raster(src("inputs", "Penman_ET0_mm_month_raster", "pen_mm_ann"), "pet",  "YlOrBr")
 export_raster(src("inputs", "AET_mm_month_raster", "aet_mm_ann"),        "aet",  "GnBu")
+# NDVI layers from Rachel (HCDP monthly NDVI 2001–2024); display-only overlays.
+# Months-below-median omits unvegetated cells, so those render transparent.
+export_raster(src("inputs", "NDVI", "ndvi_stdev_01to24.tif"),      "ndvisd",  "BuPu")
+export_raster(src("inputs", "NDVI", "ndvi_medbi_sum_01to24.tif"),  "ndvimbm", "YlOrRd")
 print("done.")

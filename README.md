@@ -50,7 +50,10 @@ per-segment species assignments in `data/segments.geojson` reflect this automati
 - **Road segments** — 280 candidate segments, colored by the selected metric (total cost,
   cost/ha, CWD, water, drought probability, plants, or elevation class).
 - **Raster overlays** — Climatic Water Deficit (CWD), Elevation (DEM), Potential ET
-  (Penman annual), Actual ET (annual).
+  (Penman annual), Actual ET (annual), and two NDVI layers from monthly HCDP NDVI
+  (2001–2024): **NDVI variability** (per-cell standard deviation) and **NDVI months below
+  median** (months a cell was below the landscape-median NDVI, of 288; unvegetated cells
+  are blank). These are display-only and do not feed the cost model or the DST score.
 - **Moisture zones** — categorical polygon layer (Arid → Very Wet).
 
 ## Regenerating `data/` from the pipeline

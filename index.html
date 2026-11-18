@@ -165,6 +165,8 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:point
         <option value="elev">Elevation</option>
         <option value="pet">Potential ET (Penman)</option>
         <option value="aet">Actual ET</option>
+        <option value="ndvisd">NDVI variability (SD)</option>
+        <option value="ndvimbm">NDVI months below median</option>
         <option value="moisture">Moisture zones</option>
       </select>
       <div id="ovbox" style="display:none">
@@ -410,7 +412,8 @@ function drawOverlay(){
   ovLayer.bringToBack();
   document.getElementById('ovmin').textContent=fmtOv(g.min);document.getElementById('ovmax').textContent=fmtOv(g.max);
 }
-function fmtOv(v){return state.overlay==='drought'?(v*100).toFixed(0)+'%':Math.round(v)+(state.overlay==='elev'?' m':' mm')}
+function fmtOv(v){if(state.overlay==='ndvisd')return v.toFixed(3)+' SD';if(state.overlay==='ndvimbm')return Math.round(v)+' of 288 mo';
+  return state.overlay==='drought'?(v*100).toFixed(0)+'%':Math.round(v)+(state.overlay==='elev'?' m':' mm')}
 const layerById={},haloGroup=L.layerGroup().addTo(map);
 function visSegs(){return SEG.filter(s=>state.corr.has(s.road)&&!(state.excl&&s.excl))}
 function drawSegments(){
@@ -603,7 +606,7 @@ async function boot(){
       a:p.a||[c[0][1],c[0][0]],b:p.b||[c[c.length-1][1],c[c.length-1][0]],
       line:c.map(x=>[x[1],x[0]]),sp:p.sp||null};});
     try{SPDB=await (await fetch('data/species_costs.json'+DV)).json();}catch(e){}
-    for(const k of ['cwd','elev','pet','aet']){try{GRIDS_META[k]=await (await fetch('data/grids/'+k+'.json'+DV)).json();}catch(e){}}
+    for(const k of ['cwd','elev','pet','aet','ndvisd','ndvimbm']){try{GRIDS_META[k]=await (await fetch('data/grids/'+k+'.json'+DV)).json();}catch(e){}}
     try{MOISTURE=await (await fetch('data/moisture_zones.geojson'+DV)).json();}catch(e){}
     try{NKSK_BND=await (await fetch('data/nksk_boundary.geojson'+DV)).json();}catch(e){}
   }catch(err){
